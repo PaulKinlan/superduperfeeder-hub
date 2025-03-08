@@ -4,6 +4,7 @@ import { Router, crypto } from "../deps.ts";
 import type { Context } from "@oak/oak";
 import { FirehoseService } from "../services/firehose.ts";
 import { getDatabase } from "../utils/database.ts";
+import { WebhookFilter } from "../models/webhook.ts";
 
 const router = new Router();
 
@@ -136,10 +137,10 @@ router.get("/firehose/sse", async (ctx: Context) => {
 router.post("/firehose/webhook", async (ctx: Context) => {
   try {
     // Get the request body
-    const body = await ctx.request.body().value;
+    const body = await ctx.request.body.formData();
 
     // Validate the request
-    if (!body.url) {
+    if (!body || !body.has("url")) {
       ctx.response.status = 400;
       ctx.response.body = {
         success: false,
@@ -148,28 +149,32 @@ router.post("/firehose/webhook", async (ctx: Context) => {
       return;
     }
 
+    const url = body.get("url") as string;
+
     // Validate the URL
     try {
-      new URL(body.url);
+      new URL(url);
     } catch (error) {
       ctx.response.status = 400;
       ctx.response.body = {
         success: false,
-        message: `Invalid URL: ${body.url}`,
+        message: `Invalid URL: ${url}`,
       };
       return;
     }
 
     // Get the content type
-    const contentType = body.contentType || "application/json";
+    const contentType =
+      (body.get("contentType") as string) || "application/json";
 
     // Get the filters
-    const filters = body.filters || [];
+    const filters: WebhookFilter[] =
+      JSON.parse((body.get("filters") as string) || "[]") || [];
 
     // Create the webhook
     const db = await getDatabase();
     const webhook = await db.webhooks.create({
-      url: body.url,
+      url: url,
       contentType,
       active: true,
       filters,

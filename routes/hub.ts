@@ -7,21 +7,38 @@ import { FirehoseService } from "../services/firehose.ts";
 
 const router = new Router();
 
+const getHubDataFromRequest = async (
+  ctx: Context
+): Promise<{ [x: string]: string } | undefined> => {
+  if (ctx.request.hasBody) {
+    const body = await ctx.request.body.formData();
+    if (body) {
+      return {
+        mode: body.get("hub.mode") as string,
+        topic: body.get("hub.topic") as string,
+        callback: body.get("hub.callback") as string,
+        leaseSeconds: body.get("hub.lease_seconds") as string,
+        secret: body.get("hub.secret") as string,
+      };
+    }
+  }
+};
+
 // WebSub hub endpoint
 router.post("/", async (ctx: Context) => {
   try {
     // Get the request body
-    const body = await ctx.request.body().value;
+    const body = await ctx.request.body.formData();
     const params =
-      ctx.request.method === "POST"
-        ? body
-        : Object.fromEntries(new URL(ctx.request.url).searchParams);
+      (await getHubDataFromRequest(ctx)) ||
+      Object.fromEntries(new URL(ctx.request.url).searchParams);
+
+    const mode = params["hub.mode"];
+    const topic = params["hub.topic"];
 
     // Check if this is a subscription request
-    if (params["hub.mode"] && params["hub.topic"]) {
-      const mode = params["hub.mode"] as string;
-      const topic = params["hub.topic"] as string;
-      const callback = params["hub.callback"] as string;
+    if (mode && topic) {
+      const callback = params["hub.callback"];
       const leaseSeconds = params["hub.lease_seconds"]
         ? parseInt(params["hub.lease_seconds"] as string)
         : undefined;
@@ -65,8 +82,8 @@ router.post("/", async (ctx: Context) => {
       }
 
       // If no topic in Link header, check if it's in the body
-      if (!topic && body.topic) {
-        topic = body.topic;
+      if (!topic && body.has("topic")) {
+        topic = body.get(topic) as string;
       }
 
       // If still no topic, return an error

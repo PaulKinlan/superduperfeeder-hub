@@ -5,7 +5,7 @@ export { join } from "@std/path";
 // Third-party dependencies - explicitly avoid re-exporting types
 export { Application } from "@oak/oak";
 export { Router } from "@oak/oak";
-export { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
+export { oakCors } from "@tajpouria/cors";
 
 // Authentication
 export { hash, compare } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
