@@ -14,16 +14,8 @@ router.get("/ui", async (ctx: Context) => {
 });
 
 router.get("/ui/:path*", async (ctx: Context) => {
-  const path = ctx.request.url.searchParams.get("path");
-  if (!path) {
-    ctx.response.status = 404;
-    ctx.response.body = "Not found";
-    return;
-  }
-
   await ctx.send({
     root: join(Deno.cwd(), "ui/public"),
-    path,
   });
 });
 
@@ -36,17 +28,8 @@ router.get("/docs", async (ctx: Context) => {
 });
 
 router.get("/docs/:path*", async (ctx: Context) => {
-  const path = ctx.request.url.searchParams.get("path");
-
-  if (!path) {
-    ctx.response.status = 404;
-    ctx.response.body = "Not found";
-    return;
-  }
-
   await ctx.send({
     root: join(Deno.cwd(), "ui/public"),
-    path,
   });
 });
 
