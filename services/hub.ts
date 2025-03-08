@@ -422,11 +422,10 @@ export class HubService {
         headers: {
           "Content-Type": contentType,
           "User-Agent": `SuperDuperFeeder/${config.version}`,
-          Link: `<${subscription.topic}>; rel="self", <${config.hubUrl}>; rel="hub"`,
+          Link: `<${subscription.topic}>; rel="self", <${config.hubUrl}/>; rel="hub"`,
         },
         body: content,
       });
-
       // Check the response
       if (!response.ok) {
         console.error(
