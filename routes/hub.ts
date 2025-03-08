@@ -25,6 +25,117 @@ const getHubDataFromRequest = async (
   }
 };
 
+// API endpoints for the UI
+router.post("/api/subscribe", async (ctx: Context) => {
+  try {
+    // Get the request body
+    const body = await ctx.request.body.formData();
+    const params = await getHubDataFromRequest(ctx);
+
+    if (!params) {
+      ctx.response.status = 400;
+      ctx.response.body = {
+        success: false,
+        message: "Invalid request: missing parameters",
+      };
+      return;
+    }
+
+    // Ensure this is a subscribe request
+    params["hub.mode"] = "subscribe";
+
+    const topic = params["hub.topic"];
+    const callback = params["hub.callback"];
+    const leaseSeconds = params["hub.leaseSeconds"]
+      ? parseInt(params["hub.leaseSeconds"] as string)
+      : undefined;
+    const secret = params["hub.secret"] as string | undefined;
+
+    // Process the subscription request
+    const result = await HubService.processSubscriptionRequest({
+      mode: "subscribe",
+      topic,
+      callback,
+      leaseSeconds,
+      secret,
+    });
+
+    // Publish a subscription update event
+    if (result.success) {
+      await FirehoseService.publishSubscriptionUpdate(
+        "subscribe",
+        topic,
+        callback
+      );
+    }
+
+    // Return the result
+    ctx.response.status = result.success ? 202 : 400;
+    ctx.response.body = result;
+  } catch (error: unknown) {
+    console.error("Error processing subscription request:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    ctx.response.status = 500;
+    ctx.response.body = {
+      success: false,
+      message: `Internal server error: ${errorMessage}`,
+    };
+  }
+});
+
+router.post("/api/unsubscribe", async (ctx: Context) => {
+  try {
+    // Get the request body
+    const body = await ctx.request.body.formData();
+    const params = await getHubDataFromRequest(ctx);
+
+    if (!params) {
+      ctx.response.status = 400;
+      ctx.response.body = {
+        success: false,
+        message: "Invalid request: missing parameters",
+      };
+      return;
+    }
+
+    // Ensure this is an unsubscribe request
+    params["hub.mode"] = "unsubscribe";
+
+    const topic = params["hub.topic"];
+    const callback = params["hub.callback"];
+
+    // Process the unsubscription request
+    const result = await HubService.processSubscriptionRequest({
+      mode: "unsubscribe",
+      topic,
+      callback,
+    });
+
+    // Publish a subscription update event
+    if (result.success) {
+      await FirehoseService.publishSubscriptionUpdate(
+        "unsubscribe",
+        topic,
+        callback
+      );
+    }
+
+    // Return the result
+    ctx.response.status = result.success ? 202 : 400;
+    ctx.response.body = result;
+  } catch (error: unknown) {
+    console.error("Error processing unsubscription request:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    ctx.response.status = 500;
+    ctx.response.body = {
+      success: false,
+      message: `Internal server error: ${errorMessage}`,
+    };
+  }
+});
+
 // WebSub hub endpoint
 router.post("/", async (ctx: Context) => {
   try {

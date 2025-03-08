@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manage Subscriptions - Super Duper Feeder</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/ui/styles.css">
   <style>
     .subscriptions-container {
       max-width: 900px;
@@ -126,10 +126,10 @@
     <h1>Super Duper Feeder</h1>
     <p>A Spec compliant WebSub/PubSubHubbub service</p>
     <nav>
-      <a href="index.html">Home</a>
-      <a href="subscribe.html">Subscribe</a>
-      <a href="unsubscribe.html">Unsubscribe</a>
-      <a href="subscriptions.html" class="active">Manage Subscriptions</a>
+      <a href="/ui/index.html">Home</a>
+      <a href="/ui/subscribe.html">Subscribe</a>
+      <a href="/ui/unsubscribe.html">Unsubscribe</a>
+      <a href="/ui/subscriptions.html" class="active">Manage Subscriptions</a>
     </nav>
   </header>
 
@@ -169,7 +169,7 @@
           subscriptionsList.innerHTML = `
             <div class="no-subscriptions">
               <p>No subscriptions to display.</p>
-              <p>You can create a new subscription using the <a href="subscribe.html">Subscribe</a> page.</p>
+              <p>You can create a new subscription using the <a href="/ui/subscribe.html">Subscribe</a> page.</p>
             </div>
           `;
         }, 1000);

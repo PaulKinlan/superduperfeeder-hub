@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Subscribe to Topic - Super Duper Feeder</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/ui/styles.css">
   <style>
     .form-container {
       max-width: 600px;
@@ -76,10 +76,10 @@
     <h1>Super Duper Feeder</h1>
     <p>A Spec compliant WebSub/PubSubHubbub service</p>
     <nav>
-      <a href="index.html">Home</a>
-      <a href="subscribe.html" class="active">Subscribe</a>
-      <a href="unsubscribe.html">Unsubscribe</a>
-      <a href="subscriptions.html">Manage Subscriptions</a>
+      <a href="/ui/index.html">Home</a>
+      <a href="/ui/subscribe.html" class="active">Subscribe</a>
+      <a href="/ui/unsubscribe.html">Unsubscribe</a>
+      <a href="/ui/subscriptions.html">Manage Subscriptions</a>
     </nav>
   </header>
 
@@ -158,7 +158,7 @@
 
         try {
           // Send the subscription request
-          const response = await fetch('/', {
+          const response = await fetch('/api/subscribe', {
             method: 'POST',
             body: formData
           });

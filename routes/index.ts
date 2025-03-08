@@ -12,6 +12,12 @@ const router = new Router();
 
 // Basic routes
 router.get("/", (ctx: Context) => {
+  // Redirect to the UI
+  ctx.response.redirect("/ui");
+});
+
+// API info endpoint
+router.get("/api", (ctx: Context) => {
   ctx.response.body = {
     name: config.name,
     description: config.description,

@@ -6,6 +6,31 @@ import type { Context } from "@oak/oak";
 const router = new Router();
 
 // Serve static files from the ui/public directory
+router.get("/ui", async (ctx: Context) => {
+  await ctx.send({
+    root: join(Deno.cwd(), "ui/public"),
+    index: "index.html",
+  });
+});
+
+router.get("/ui/:path*", async (ctx: Context) => {
+  const path = ctx.request.url.pathname.replace("/ui/", "");
+
+  if (!path || path === "") {
+    await ctx.send({
+      root: join(Deno.cwd(), "ui/public"),
+      index: "index.html",
+    });
+    return;
+  }
+
+  await ctx.send({
+    root: join(Deno.cwd(), "ui/public"),
+    path,
+  });
+});
+
+// Keep the original /docs routes for backward compatibility
 router.get("/docs", async (ctx: Context) => {
   await ctx.send({
     root: join(Deno.cwd(), "ui/public"),
