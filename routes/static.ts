@@ -8,19 +8,16 @@ const router = new Router();
 // Serve static files from the ui/public directory
 router.get("/ui", async (ctx: Context) => {
   await ctx.send({
-    root: join(Deno.cwd(), "ui/public"),
+    root: join(Deno.cwd(), "ui/public/ui"),
     index: "index.html",
   });
 });
 
 router.get("/ui/:path*", async (ctx: Context) => {
-  const path = ctx.request.url.pathname.replace("/ui/", "");
-
-  if (!path || path === "") {
-    await ctx.send({
-      root: join(Deno.cwd(), "ui/public"),
-      index: "index.html",
-    });
+  const path = ctx.request.url.searchParams.get("path");
+  if (!path) {
+    ctx.response.status = 404;
+    ctx.response.body = "Not found";
     return;
   }
 
@@ -33,7 +30,7 @@ router.get("/ui/:path*", async (ctx: Context) => {
 // Keep the original /docs routes for backward compatibility
 router.get("/docs", async (ctx: Context) => {
   await ctx.send({
-    root: join(Deno.cwd(), "ui/public"),
+    root: join(Deno.cwd(), "ui/public/docs"),
     index: "index.html",
   });
 });
