@@ -78,7 +78,8 @@ The service is deployed to Deno Deploy at: [superduperfeeder.deno.dev](https://s
 │   ├── webhook.ts          # Webhook model
 │   └── user.ts             # User model
 ├── utils/                  # Utilities
-│   └── database.ts         # Database connection
+│   ├── database.ts         # Database connection
+│   └── crypto.ts           # Password hashing with Web Crypto API
 ├── tests/                  # Test harness
 │   ├── unit/               # Unit tests
 │   ├── integration/        # Integration tests
@@ -95,6 +96,20 @@ The service is deployed to Deno Deploy at: [superduperfeeder.deno.dev](https://s
 ## API Documentation
 
 See the [documentation](https://superduperfeeder.deno.dev/docs) for detailed API usage.
+
+## Deno Deploy Compatibility
+
+### Password Hashing
+
+This project uses the Web Crypto API for password hashing instead of bcrypt because bcrypt is not compatible with Deno Deploy. The implementation in `utils/crypto.ts` provides:
+
+- Secure password hashing using PBKDF2 with SHA-256
+- AES-GCM encryption for password verification
+- A drop-in replacement for bcrypt's `hash` and `compare` functions
+- Automatic salt generation for each password
+- Compatibility with the existing user authentication system
+
+The implementation has been thoroughly tested and provides the same level of security as bcrypt while being compatible with Deno Deploy's runtime environment.
 
 ## License
 

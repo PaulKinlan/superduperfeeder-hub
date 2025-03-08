@@ -7,8 +7,8 @@ export { Application } from "@oak/oak";
 export { Router } from "@oak/oak";
 export { oakCors } from "@tajpouria/cors";
 
-// Authentication
-export { hash, compare } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+// Authentication - using Web Crypto API for Deno Deploy compatibility
+export { hash, compare } from "./utils/crypto.ts";
 
 // RSS parsing
 export { parseFeed } from "@mikaelporttila/rss";

@@ -22,13 +22,33 @@ The test harness uses a separate configuration defined in `test_config.ts`. This
 
 ## Running Tests
 
-To run all tests, use the following command:
+There are two ways to run the tests:
+
+### Using the Custom Test Runner
+
+To run all tests using our custom test runner, use the following command:
 
 ```bash
-deno run --allow-net --allow-read --allow-env --unstable-kv tests/run_tests.ts
+deno task test
 ```
 
 This will run all the tests defined in the test files and provide a summary of the results.
+
+### Using Deno's Built-in Test Runner
+
+You can also use Deno's built-in test runner:
+
+```bash
+deno task test:deno
+```
+
+Or directly:
+
+```bash
+deno test --allow-net --allow-read --allow-env --unstable-kv tests/unit/ tests/integration/
+```
+
+The built-in test runner provides more detailed output and can be useful for debugging.
 
 ## Writing Tests
 

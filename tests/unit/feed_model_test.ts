@@ -6,14 +6,13 @@ import {
   resetTestDatabase,
   closeTestDatabase,
 } from "../utils/test_database.ts";
-import { testConfig } from "../test_config.ts";
 
-// Override the config with test config
-import { config } from "../../config.ts";
-Object.assign(config, testConfig);
+// Import test setup to configure the environment
+import "../test_setup.ts";
 
 Deno.test({
   name: "Feed Model - Create Feed",
+  sanitizeResources: false,
   async fn() {
     // Reset the database
     await resetTestDatabase();
@@ -49,6 +48,7 @@ Deno.test({
 
 Deno.test({
   name: "Feed Model - Get Feed By ID",
+  sanitizeResources: false,
   async fn() {
     // Reset the database
     await resetTestDatabase();
@@ -83,6 +83,7 @@ Deno.test({
 
 Deno.test({
   name: "Feed Model - Get Feed By URL",
+  sanitizeResources: false,
   async fn() {
     // Reset the database
     await resetTestDatabase();
@@ -118,6 +119,7 @@ Deno.test({
 
 Deno.test({
   name: "Feed Model - Update Feed",
+  sanitizeResources: false,
   async fn() {
     // Reset the database
     await resetTestDatabase();
@@ -159,6 +161,7 @@ Deno.test({
 
 Deno.test({
   name: "Feed Model - Delete Feed",
+  sanitizeResources: false,
   async fn() {
     // Reset the database
     await resetTestDatabase();
@@ -193,6 +196,7 @@ Deno.test({
 
 Deno.test({
   name: "Feed Model - Get Feeds To Update",
+  sanitizeResources: false,
   async fn() {
     // Reset the database
     await resetTestDatabase();
@@ -282,6 +286,7 @@ Deno.test({
 
 Deno.test({
   name: "Feed Model - Feed Items",
+  sanitizeResources: false,
   async fn() {
     // Reset the database
     await resetTestDatabase();
