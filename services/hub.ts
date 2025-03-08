@@ -4,7 +4,7 @@ import { config } from "../config.ts";
 import { getDatabase } from "../utils/database.ts";
 import { Subscription, SubscriptionRequest } from "../models/subscription.ts";
 import { Feed } from "../models/feed.ts";
-import { PollingService } from "./polling.ts";
+import { parseFeed } from "../deps.ts";
 import { crypto } from "../deps.ts";
 
 // Class for handling WebSub hub functionality
@@ -304,46 +304,89 @@ export class HubService {
         };
       }
 
-      // Check if we have this topic in our feeds
-      const feed = await db.feeds.getByUrl(topic);
-
-      // If we don't have this feed, we'll create a temporary one for fetching
-      const tempFeed: Feed = feed || {
-        id: crypto.randomUUID(),
-        url: topic,
-        pollingInterval: 60,
-        active: true,
-        supportsWebSub: true,
-        errorCount: 0,
+      // Prepare headers for the request
+      const headers: HeadersInit = {
+        "User-Agent": `SuperDuperFeeder/${config.version}`,
       };
 
-      // Fetch the feed content using the polling service
-      const pollResult = await PollingService.pollFeed(tempFeed);
+      // Fetch the feed content directly
+      const response = await fetch(topic, {
+        method: "GET",
+        headers,
+      });
 
-      if (!pollResult.success) {
+      // Check if the request was successful
+      if (!response.ok) {
         return {
           success: false,
-          message: `Failed to fetch topic content: ${pollResult.message}`,
+          message: `Failed to fetch topic content: HTTP error ${response.status} ${response.statusText}`,
           count: 0,
         };
       }
 
-      // Get the latest items
-      const items = feed ? await db.feeds.getItemsByFeed(feed.id, 10) : [];
+      // Parse the feed content
+      const content = await response.text();
+      let feedTitle = "";
+      let feedItems: Array<{
+        guid: string;
+        url: string;
+        title: string;
+        summary: string;
+        published: Date;
+      }> = [];
+
+      try {
+        const parsedFeed = await parseFeed(content);
+        feedTitle = parsedFeed.title?.value || "";
+
+        // Extract items from the parsed feed
+        if (parsedFeed.entries && parsedFeed.entries.length > 0) {
+          feedItems = parsedFeed.entries
+            .map((entry) => {
+              // Get the item URL from links if available
+              const url =
+                entry.links && entry.links.length > 0 && entry.links[0].href
+                  ? entry.links[0].href
+                  : "";
+
+              // Get the item summary from description if available
+              // Note: The FeedEntry type might not have a summary property
+              const summary = entry.description?.value || "";
+
+              return {
+                guid: entry.id || url || "",
+                url,
+                title: entry.title?.value || "Untitled",
+                summary,
+                published: entry.published
+                  ? new Date(entry.published)
+                  : entry.updated
+                  ? new Date(entry.updated)
+                  : new Date(),
+              };
+            })
+            .slice(0, 10); // Limit to 10 items
+        }
+      } catch (parseError) {
+        console.error("Error parsing feed:", parseError);
+        return {
+          success: false,
+          message: `Failed to parse feed content: ${
+            parseError instanceof Error
+              ? parseError.message
+              : String(parseError)
+          }`,
+          count: 0,
+        };
+      }
 
       // Create a notification
       const notification = {
         feed: {
           url: topic,
-          title: tempFeed.title,
+          title: feedTitle,
         },
-        items: items.map((item) => ({
-          guid: item.guid,
-          url: item.url,
-          title: item.title,
-          summary: item.summary,
-          published: item.published,
-        })),
+        items: feedItems,
       };
 
       // Distribute the content to subscribers

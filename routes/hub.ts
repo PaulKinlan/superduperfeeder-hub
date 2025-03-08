@@ -4,7 +4,6 @@ import { Router } from "../deps.ts";
 import type { Context } from "@oak/oak";
 import { HubService } from "../services/hub.ts";
 import { FirehoseService } from "../services/firehose.ts";
-import { compareSpecs } from "https://jsr.io/@std/http/1.0.13/_negotiation/common.ts";
 
 const router = new Router();
 
@@ -42,6 +41,7 @@ router.post("/", async (ctx: Context) => {
     // Check if this is a publish request
     if (mode === "publish" && topic) {
       // Process the publish request
+      console.log("publish topic", topic);
       const result = await HubService.processPublishRequest(topic);
 
       // Return the result
