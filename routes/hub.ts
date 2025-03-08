@@ -4,6 +4,7 @@ import { Router } from "../deps.ts";
 import type { Context } from "@oak/oak";
 import { HubService } from "../services/hub.ts";
 import { FirehoseService } from "../services/firehose.ts";
+import { compareSpecs } from "https://jsr.io/@std/http/1.0.13/_negotiation/common.ts";
 
 const router = new Router();
 
@@ -29,6 +30,7 @@ router.post("/", async (ctx: Context) => {
   try {
     // Get the request body
     const body = await ctx.request.body.formData();
+    console.log("body", body);
     const params =
       (await getHubDataFromRequest(ctx)) ||
       Object.fromEntries(new URL(ctx.request.url).searchParams);
