@@ -326,74 +326,9 @@ export class HubService {
 
       // Parse the feed content
       const content = await response.text();
-      let feedTitle = "";
-      let feedItems: Array<{
-        guid: string;
-        url: string;
-        title: string;
-        summary: string;
-        published: Date;
-      }> = [];
-
-      try {
-        const parsedFeed = await parseFeed(content);
-        feedTitle = parsedFeed.title?.value || "";
-
-        // Extract items from the parsed feed
-        if (parsedFeed.entries && parsedFeed.entries.length > 0) {
-          feedItems = parsedFeed.entries
-            .map((entry) => {
-              // Get the item URL from links if available
-              const url =
-                entry.links && entry.links.length > 0 && entry.links[0].href
-                  ? entry.links[0].href
-                  : "";
-
-              // Get the item summary from description if available
-              // Note: The FeedEntry type might not have a summary property
-              const summary = entry.description?.value || "";
-
-              return {
-                guid: entry.id || url || "",
-                url,
-                title: entry.title?.value || "Untitled",
-                summary,
-                published: entry.published
-                  ? new Date(entry.published)
-                  : entry.updated
-                  ? new Date(entry.updated)
-                  : new Date(),
-              };
-            })
-            .slice(0, 10); // Limit to 10 items
-        }
-      } catch (parseError) {
-        console.error("Error parsing feed:", parseError);
-        return {
-          success: false,
-          message: `Failed to parse feed content: ${
-            parseError instanceof Error
-              ? parseError.message
-              : String(parseError)
-          }`,
-          count: 0,
-        };
-      }
-
-      // Create a notification
-      const notification = {
-        feed: {
-          url: topic,
-          title: feedTitle,
-        },
-        items: feedItems,
-      };
 
       // Distribute the content to subscribers
-      return await HubService.processContentNotification(
-        topic,
-        JSON.stringify(notification)
-      );
+      return await HubService.processContentNotification(topic, content);
     } catch (error: unknown) {
       console.error("Error processing publish request:", error);
       const errorMessage =
