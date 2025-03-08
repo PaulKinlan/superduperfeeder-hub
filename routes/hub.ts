@@ -15,11 +15,11 @@ const getHubDataFromRequest = async (
     const body = await ctx.request.body.formData();
     if (body) {
       return {
-        mode: body.get("hub.mode") as string,
-        topic: body.get("hub.topic") as string,
-        callback: body.get("hub.callback") as string,
-        leaseSeconds: body.get("hub.lease_seconds") as string,
-        secret: body.get("hub.secret") as string,
+        "hub.mode": body.get("hub.mode") as string,
+        "hub.topic": body.get("hub.topic") as string,
+        "hub.callback": body.get("hub.callback") as string,
+        "hub.leaseSeconds": body.get("hub.lease_seconds") as string,
+        "hub.secret": body.get("hub.secret") as string,
       };
     }
   }
@@ -35,6 +35,7 @@ router.post("/", async (ctx: Context) => {
       (await getHubDataFromRequest(ctx)) ||
       Object.fromEntries(new URL(ctx.request.url).searchParams);
 
+    console.log("params", params);
     const mode = params["hub.mode"];
     const topic = params["hub.topic"];
 
