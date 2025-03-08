@@ -39,8 +39,19 @@ router.post("/", async (ctx: Context) => {
     const mode = params["hub.mode"];
     const topic = params["hub.topic"];
 
+    // Check if this is a publish request
+    if (mode === "publish" && topic) {
+      // Process the publish request
+      const result = await HubService.processPublishRequest(topic);
+
+      // Return the result
+      ctx.response.status = result.success ? 202 : 400;
+      ctx.response.body = result;
+      return;
+    }
+
     // Check if this is a subscription request
-    if (mode && topic) {
+    if ((mode === "subscribe" || mode === "unsubscribe") && topic) {
       const callback = params["hub.callback"];
       const leaseSeconds = params["hub.lease_seconds"]
         ? parseInt(params["hub.lease_seconds"] as string)

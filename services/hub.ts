@@ -3,6 +3,8 @@
 import { config } from "../config.ts";
 import { getDatabase } from "../utils/database.ts";
 import { Subscription, SubscriptionRequest } from "../models/subscription.ts";
+import { Feed } from "../models/feed.ts";
+import { PollingService } from "./polling.ts";
 import { crypto } from "../deps.ts";
 
 // Class for handling WebSub hub functionality
@@ -281,6 +283,83 @@ export class HubService {
     } catch (error: unknown) {
       console.error("Error verifying subscription:", error);
       return false;
+    }
+  }
+
+  // Process a publish request
+  static async processPublishRequest(
+    topic: string
+  ): Promise<{ success: boolean; message: string; count: number }> {
+    try {
+      const db = await getDatabase();
+
+      // Verify the topic URL
+      try {
+        new URL(topic);
+      } catch (error) {
+        return {
+          success: false,
+          message: `Invalid topic URL: ${topic}`,
+          count: 0,
+        };
+      }
+
+      // Check if we have this topic in our feeds
+      const feed = await db.feeds.getByUrl(topic);
+
+      // If we don't have this feed, we'll create a temporary one for fetching
+      const tempFeed: Feed = feed || {
+        id: crypto.randomUUID(),
+        url: topic,
+        pollingInterval: 60,
+        active: true,
+        supportsWebSub: true,
+        errorCount: 0,
+      };
+
+      // Fetch the feed content using the polling service
+      const pollResult = await PollingService.pollFeed(tempFeed);
+
+      if (!pollResult.success) {
+        return {
+          success: false,
+          message: `Failed to fetch topic content: ${pollResult.message}`,
+          count: 0,
+        };
+      }
+
+      // Get the latest items
+      const items = feed ? await db.feeds.getItemsByFeed(feed.id, 10) : [];
+
+      // Create a notification
+      const notification = {
+        feed: {
+          url: topic,
+          title: tempFeed.title,
+        },
+        items: items.map((item) => ({
+          guid: item.guid,
+          url: item.url,
+          title: item.title,
+          summary: item.summary,
+          published: item.published,
+        })),
+      };
+
+      // Distribute the content to subscribers
+      return await HubService.processContentNotification(
+        topic,
+        JSON.stringify(notification)
+      );
+    } catch (error: unknown) {
+      console.error("Error processing publish request:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        message: `Internal server error: ${errorMessage}`,
+        count: 0,
+      };
     }
   }
 
