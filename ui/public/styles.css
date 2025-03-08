@@ -64,6 +64,31 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Navigation */
+nav {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+nav a {
+  padding: 0.5rem 1rem;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+nav a:hover {
+  background-color: #2980b9;
+  text-decoration: none;
+}
+
+nav a.active {
+  background-color: var(--secondary-color);
+}
+
 /* Layout */
 header,
 footer {
