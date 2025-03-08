@@ -8,7 +8,7 @@ const router = new Router();
 // Serve static files from the ui/public directory
 router.get("/ui", async (ctx: Context) => {
   await ctx.send({
-    root: join(Deno.cwd(), "ui/public/ui"),
+    root: join(Deno.cwd(), "ui/public"),
     index: "index.html",
   });
 });
@@ -30,7 +30,7 @@ router.get("/ui/:path*", async (ctx: Context) => {
 // Keep the original /docs routes for backward compatibility
 router.get("/docs", async (ctx: Context) => {
   await ctx.send({
-    root: join(Deno.cwd(), "ui/public/docs"),
+    root: join(Deno.cwd(), "ui/public"),
     index: "index.html",
   });
 });
