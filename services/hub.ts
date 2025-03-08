@@ -3,7 +3,8 @@
 import { config } from "../config.ts";
 import { getDatabase } from "../utils/database.ts";
 import { Subscription, SubscriptionRequest } from "../models/subscription.ts";
-import { crypto } from "../deps.ts";
+import { crypto, parseFeed } from "../deps.ts";
+import { Feed } from "../models/feed.ts";
 
 // Class for handling WebSub hub functionality
 export class HubService {
@@ -188,6 +189,135 @@ export class HubService {
     }, 0);
   }
 
+  // Check if a URL is a feed or has a link to a feed
+  static async checkAndAddFeedForPolling(topic: string): Promise<{
+    success: boolean;
+    feedUrl: string;
+    lastProcessedEntryId?: string;
+  }> {
+    try {
+      const db = await getDatabase();
+
+      // Check if the feed already exists in the FeedStore
+      const existingFeed = await db.feeds.getByUrl(topic);
+      if (existingFeed) {
+        return {
+          success: true,
+          feedUrl: topic,
+          lastProcessedEntryId: existingFeed.lastProcessedEntryId,
+        };
+      }
+
+      // Prepare headers for the request
+      const headers: HeadersInit = {
+        "User-Agent": `SuperDuperFeeder/${config.version}`,
+      };
+
+      // Fetch the content
+      const response = await fetch(topic, {
+        method: "GET",
+        headers,
+      });
+
+      if (!response.ok) {
+        console.error(
+          `Failed to fetch topic: ${topic}, status: ${response.status}`
+        );
+        return { success: false, feedUrl: topic };
+      }
+
+      const contentType = response.headers.get("Content-Type") || "";
+      const content = await response.text();
+
+      // Try to parse as a feed
+      try {
+        const parsedFeed = await parseFeed(content);
+
+        // It's a feed! Add it to the FeedStore for polling
+        let feedUrl = topic;
+        let lastProcessedEntryId: string | undefined;
+
+        // Get the most recent entry ID if available
+        if (parsedFeed.entries && parsedFeed.entries.length > 0) {
+          // Sort entries by updated or published date, newest first
+          const sortedEntries = [...parsedFeed.entries].sort((a, b) => {
+            const aDate = a.updated || a.published || "";
+            const bDate = b.updated || b.published || "";
+            return new Date(bDate).getTime() - new Date(aDate).getTime();
+          });
+
+          // Use the ID of the most recent entry
+          lastProcessedEntryId =
+            sortedEntries[0].id ||
+            sortedEntries[0].links?.[0]?.href ||
+            undefined;
+        }
+
+        // Extract title and description safely
+        let feedTitle: string | undefined;
+        let feedDescription: string | undefined;
+
+        try {
+          feedTitle = parsedFeed.title?.toString() || undefined;
+        } catch (e) {
+          console.error("Error extracting feed title:", e);
+        }
+
+        try {
+          feedDescription = parsedFeed.description?.toString() || undefined;
+        } catch (e) {
+          console.error("Error extracting feed description:", e);
+        }
+
+        // Create the feed in the FeedStore
+        const feed: Omit<Feed, "id" | "errorCount"> = {
+          url: feedUrl,
+          title: feedTitle,
+          description: feedDescription,
+          pollingInterval: config.defaultPollingIntervalMinutes || 60, // Default to 60 minutes if not configured
+          active: true,
+          supportsWebSub: false, // We're here because WebSub verification failed
+          lastProcessedEntryId,
+        };
+
+        await db.feeds.create(feed);
+
+        console.log(`Added feed to polling: ${feedUrl}`);
+        return {
+          success: true,
+          feedUrl,
+          lastProcessedEntryId,
+        };
+      } catch (parseError) {
+        // Not a feed, check if it's an HTML page with a feed link
+        if (contentType.includes("text/html")) {
+          // Simple regex to find feed links
+          const feedLinkRegex =
+            /<link[^>]+rel=["'](?:alternate|feed)["'][^>]+href=["']([^"']+)["'][^>]*>/i;
+          const match = content.match(feedLinkRegex);
+
+          if (match && match[1]) {
+            let feedUrl = match[1];
+
+            // Handle relative URLs
+            if (feedUrl.startsWith("/") || !feedUrl.startsWith("http")) {
+              const baseUrl = new URL(topic);
+              feedUrl = new URL(feedUrl, baseUrl.origin).toString();
+            }
+
+            // Recursively check the feed URL
+            return await HubService.checkAndAddFeedForPolling(feedUrl);
+          }
+        }
+      }
+
+      return { success: false, feedUrl: topic };
+    } catch (error) {
+      console.error(`Error checking feed: ${topic}`, error);
+      return { success: false, feedUrl: topic };
+    }
+  }
+
   // Verify a subscription
   static async verifySubscription(verification: any): Promise<boolean> {
     try {
@@ -242,7 +372,7 @@ export class HubService {
       });
 
       // Check the response
-      if (!response.ok) {
+      if (!response.ok || response.status >= 400) {
         console.error(
           `Verification failed for subscription: ${verification.id}, status: ${response.status}`
         );
@@ -250,6 +380,23 @@ export class HubService {
         // If unsubscribe verification fails, we still remove the subscription
         if (verification.mode === "unsubscribe") {
           await db.subscriptions.delete(verification.id);
+        } else if (verification.mode === "subscribe") {
+          // // For subscribe failures, check if it's a feed and add it for polling
+          // console.log(`Checking if topic is a feed: ${verification.topic}`);
+          // const feedCheck = await HubService.checkAndAddFeedForPolling(
+          //   verification.topic
+          // );
+          // if (feedCheck.success) {
+          //   console.log(`Added topic to polling: ${feedCheck.feedUrl}`);
+          //   // Update the subscription to mark it as verified since we'll handle it via polling
+          //   await db.subscriptions.update({
+          //     ...subscription,
+          //     verified: true,
+          //     verificationToken: undefined,
+          //     verificationExpires: undefined,
+          //   });
+          //   return true;
+          // }
         }
 
         return false;
@@ -262,6 +409,31 @@ export class HubService {
         console.error(
           `Challenge mismatch for subscription: ${verification.id}`
         );
+
+        // If challenge mismatch for subscribe, check if it's a feed and add it for polling
+        if (verification.mode === "subscribe") {
+          console.log(
+            `Challenge mismatch, checking if topic is a feed: ${verification.topic}`
+          );
+          const feedCheck = await HubService.checkAndAddFeedForPolling(
+            verification.topic
+          );
+
+          if (feedCheck.success) {
+            console.log(`Added topic to polling: ${feedCheck.feedUrl}`);
+
+            // Update the subscription to mark it as verified since we'll handle it via polling
+            await db.subscriptions.update({
+              ...subscription,
+              verified: true,
+              verificationToken: undefined,
+              verificationExpires: undefined,
+            });
+
+            return true;
+          }
+        }
+
         return false;
       }
 
@@ -280,6 +452,26 @@ export class HubService {
       return true;
     } catch (error: unknown) {
       console.error("Error verifying subscription:", error);
+
+      // If there's an error during subscribe verification, try to add as a polling feed
+      try {
+        if (verification.mode === "subscribe") {
+          console.log(
+            `Error during verification, checking if topic is a feed: ${verification.topic}`
+          );
+          const feedCheck = await HubService.checkAndAddFeedForPolling(
+            verification.topic
+          );
+
+          if (feedCheck.success) {
+            console.log(`Added topic to polling: ${feedCheck.feedUrl}`);
+            return true;
+          }
+        }
+      } catch (feedError) {
+        console.error("Error checking feed:", feedError);
+      }
+
       return false;
     }
   }

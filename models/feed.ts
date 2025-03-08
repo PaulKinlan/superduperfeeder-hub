@@ -19,6 +19,7 @@ export interface Feed {
   errorCount: number; // Number of consecutive errors
   lastError?: string; // Last error message
   lastErrorTime?: Date; // When the last error occurred
+  lastProcessedEntryId?: string; // ID of the most recently processed entry
 }
 
 // Interface for feed item data
