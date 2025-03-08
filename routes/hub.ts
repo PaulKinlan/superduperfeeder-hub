@@ -4,6 +4,7 @@ import { Router } from "../deps.ts";
 import type { Context } from "@oak/oak";
 import { HubService } from "../services/hub.ts";
 import { FirehoseService } from "../services/firehose.ts";
+import { contentType } from "jsr:@std/media-types@^1.1.0/content-type";
 
 const router = new Router();
 
@@ -119,10 +120,13 @@ router.post("/", async (ctx: Context) => {
         content = JSON.stringify(body);
       }
 
+      const contentType = ctx.request.headers.get("Content-Type") || "";
+
       // Process the content notification
       const result = await HubService.processContentNotification(
         topic,
-        content
+        content,
+        contentType
       );
 
       // Return the result

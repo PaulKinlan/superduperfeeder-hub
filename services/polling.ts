@@ -252,7 +252,8 @@ export class PollingService {
         // Notify subscribers
         await HubService.processContentNotification(
           feed.url,
-          JSON.stringify(notification)
+          JSON.stringify(notification),
+          "application/json" // for now, we only support on polling, we need to fix
         );
       }
 

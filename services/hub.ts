@@ -3,8 +3,6 @@
 import { config } from "../config.ts";
 import { getDatabase } from "../utils/database.ts";
 import { Subscription, SubscriptionRequest } from "../models/subscription.ts";
-import { Feed } from "../models/feed.ts";
-import { parseFeed } from "../deps.ts";
 import { crypto } from "../deps.ts";
 
 // Class for handling WebSub hub functionality
@@ -326,9 +324,14 @@ export class HubService {
 
       // Parse the feed content
       const content = await response.text();
+      const contentType = response.headers.get("Content-Type") || "text/plain";
 
       // Distribute the content to subscribers
-      return await HubService.processContentNotification(topic, content);
+      return await HubService.processContentNotification(
+        topic,
+        content,
+        contentType
+      );
     } catch (error: unknown) {
       console.error("Error processing publish request:", error);
       const errorMessage =
@@ -344,7 +347,8 @@ export class HubService {
   // Process a content notification
   static async processContentNotification(
     topic: string,
-    content: string
+    content: string,
+    contentType: string
   ): Promise<{ success: boolean; message: string; count: number }> {
     try {
       const db = await getDatabase();
@@ -364,7 +368,11 @@ export class HubService {
       let count = 0;
       for (const subscription of subscriptions) {
         if (subscription.verified) {
-          await HubService.queueDistribution(subscription, content);
+          await HubService.queueDistribution(
+            subscription,
+            content,
+            contentType
+          );
           count++;
         }
       }
@@ -389,26 +397,30 @@ export class HubService {
   // Queue content distribution
   static async queueDistribution(
     subscription: Subscription,
-    content: string
+    content: string,
+    contentType: string
   ): Promise<void> {
     // In a real implementation, we'd use Deno Deploy's queue system
     // For now, we'll just call the distribution method directly
     setTimeout(() => {
-      HubService.distributeContent(subscription, content).catch(console.error);
+      HubService.distributeContent(subscription, content, contentType).catch(
+        console.error
+      );
     }, 0);
   }
 
   // Distribute content to a subscriber
   static async distributeContent(
     subscription: Subscription,
-    content: string
+    content: string,
+    contentType: string
   ): Promise<boolean> {
     try {
       // Send the content to the subscriber
       const response = await fetch(subscription.callback, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": contentType,
           "User-Agent": `SuperDuperFeeder/${config.version}`,
           Link: `<${subscription.topic}>; rel="self", <${config.hubUrl}>; rel="hub"`,
         },
