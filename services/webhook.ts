@@ -78,79 +78,117 @@ export class WebhookService {
       }
 
       const contentType = response.headers.get("Content-Type") || "";
-      const content = await response.text();
 
-      // Try to parse as a feed
-      try {
-        const parsedFeed = await parseFeed(content);
+      // First, check for WebSub hub in HTTP Link headers
+      let hubUrl: string | undefined;
+      const linkHeader = response.headers.get("Link");
 
-        // Check for WebSub hub link
-        let hubUrl: string | undefined;
+      if (linkHeader) {
+        // Parse Link header
+        const linkMatches = [
+          ...linkHeader.matchAll(/<([^>]+)>;\s*rel=["']?([^"',]+)["']?/g),
+        ];
+        for (const match of linkMatches) {
+          if (match[2] === "hub") {
+            hubUrl = match[1];
+            console.log(`Found WebSub hub in Link header: ${hubUrl}`);
+            break;
+          }
+        }
+      }
 
+      // If no hub found in headers, check the content
+      if (!hubUrl) {
+        const content = await response.text();
+
+        // Try to parse as a feed
         try {
-          if (parsedFeed.links && Array.isArray(parsedFeed.links)) {
-            for (const link of parsedFeed.links) {
-              if (
-                typeof link === "object" &&
-                link !== null &&
-                "rel" in link &&
-                (link as any).rel === "hub" &&
-                "href" in link &&
-                (link as any).href
-              ) {
-                hubUrl = (link as any).href as string;
-                break;
+          const parsedFeed = await parseFeed(content);
+
+          // Check for WebSub hub link in feed
+          try {
+            if (parsedFeed.links && Array.isArray(parsedFeed.links)) {
+              for (const link of parsedFeed.links) {
+                if (
+                  typeof link === "object" &&
+                  link !== null &&
+                  "rel" in link &&
+                  (link as any).rel === "hub" &&
+                  "href" in link &&
+                  (link as any).href
+                ) {
+                  hubUrl = (link as any).href as string;
+                  console.log(`Found WebSub hub in feed: ${hubUrl}`);
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error checking for WebSub hub in feed:", e);
+          }
+        } catch (parseError) {
+          // Not a feed, check if it's an HTML page
+          if (contentType.includes("text/html")) {
+            // Check for hub link in HTML
+            const hubLinkRegex =
+              /<link[^>]+rel=["']hub["'][^>]+href=["']([^"']+)["'][^>]*>/i;
+            const hubMatch = content.match(hubLinkRegex);
+
+            if (hubMatch && hubMatch[1]) {
+              hubUrl = hubMatch[1];
+
+              // Handle relative URLs
+              if (hubUrl.startsWith("/") || !hubUrl.startsWith("http")) {
+                const baseUrl = new URL(topic);
+                hubUrl = new URL(hubUrl, baseUrl.origin).toString();
+              }
+
+              console.log(`Found WebSub hub in HTML: ${hubUrl}`);
+            }
+
+            // If no hub found, check for feed links
+            if (!hubUrl) {
+              const feedLinkRegex =
+                /<link[^>]+rel=["'](?:alternate|feed)["'][^>]+href=["']([^"']+)["'][^>]*>/i;
+              const match = content.match(feedLinkRegex);
+
+              if (match && match[1]) {
+                let feedUrl = match[1];
+
+                // Handle relative URLs
+                if (feedUrl.startsWith("/") || !feedUrl.startsWith("http")) {
+                  const baseUrl = new URL(topic);
+                  feedUrl = new URL(feedUrl, baseUrl.origin).toString();
+                }
+
+                console.log(`Found feed link in HTML: ${feedUrl}`);
+
+                // Recursively check the feed URL
+                return await WebhookService.subscribeToFeed(
+                  feedUrl,
+                  userCallbackUrl
+                );
               }
             }
           }
-        } catch (e) {
-          console.error("Error checking for WebSub hub:", e);
         }
+      }
 
-        if (hubUrl) {
-          // The feed has a hub, subscribe to it
-          console.log(`Found WebSub hub for ${topic}: ${hubUrl}`);
-          const result = await WebhookService.subscribeToExternalHub(
-            topic,
-            hubUrl,
-            userCallbackUrl
-          );
-          return {
-            ...result,
-            usingExternalHub: true,
-          };
-        } else {
-          // No hub found, use our own hub
-          console.log(`No WebSub hub found for ${topic}, using fallback`);
-          return await WebhookService.subscribeToOwnHub(topic, userCallbackUrl);
-        }
-      } catch (parseError) {
-        // Not a feed, check if it's an HTML page with a feed link
-        if (contentType.includes("text/html")) {
-          // Simple regex to find feed links
-          const feedLinkRegex =
-            /<link[^>]+rel=["'](?:alternate|feed)["'][^>]+href=["']([^"']+)["'][^>]*>/i;
-          const match = content.match(feedLinkRegex);
-
-          if (match && match[1]) {
-            let feedUrl = match[1];
-
-            // Handle relative URLs
-            if (feedUrl.startsWith("/") || !feedUrl.startsWith("http")) {
-              const baseUrl = new URL(topic);
-              feedUrl = new URL(feedUrl, baseUrl.origin).toString();
-            }
-
-            // Recursively check the feed URL
-            return await WebhookService.subscribeToFeed(
-              feedUrl,
-              userCallbackUrl
-            );
-          }
-        }
-
-        // Not a feed and no feed link found, try using our own hub as fallback
-        console.log(`Could not parse ${topic} as a feed, using fallback`);
+      // If we found a hub, subscribe to it
+      if (hubUrl) {
+        console.log(`Using WebSub hub for ${topic}: ${hubUrl}`);
+        const result = await WebhookService.subscribeToExternalHub(
+          topic,
+          hubUrl,
+          userCallbackUrl
+        );
+        return {
+          ...result,
+          usingExternalHub: true,
+        };
+      } else {
+        // No hub found, use our own hub
+        console.log(`No WebSub hub found for ${topic}, using fallback`);
         return await WebhookService.subscribeToOwnHub(topic, userCallbackUrl);
       }
     } catch (error) {
