@@ -725,17 +725,75 @@ export class WebhookService {
     // Clean up expired verification tokens
     await WebhookService.cleanupExpiredVerifications();
 
+    // Clear expired subscriptions
+    await WebhookService.clearExpiredSubscriptions();
+
     // Set up a cron job to renew subscriptions every hour
     Deno.cron("Renew WebSub Subscriptions", "0 * * * *", async () => {
       console.log("Running scheduled subscription renewal...");
       await WebhookService.renewSubscriptions();
     });
 
-    // Set up a cron job to clean up expired verification tokens every day
-    Deno.cron("Clean Up Expired Verifications", "0 0 * * *", async () => {
+    // Set up a cron job to clean up expired verification tokens every hour
+    Deno.cron("Clean Up Expired Verifications", "0 * * * *", async () => {
       console.log("Running scheduled cleanup of expired verifications...");
       await WebhookService.cleanupExpiredVerifications();
     });
+
+    // Set up a cron job to clear expired subscriptions every hour
+    Deno.cron("Clear Expired Subscriptions", "0 * * * *", async () => {
+      console.log("Running scheduled cleanup of expired subscriptions...");
+      await WebhookService.clearExpiredSubscriptions();
+    });
+  }
+
+  // Clear expired external subscriptions
+  static async clearExpiredSubscriptions(): Promise<{
+    success: boolean;
+    message: string;
+    cleared: number;
+  }> {
+    try {
+      const db = await getDatabase();
+
+      // Get all expired subscriptions
+      const expiredSubscriptions = await db.externalSubscriptions.getExpired();
+
+      if (expiredSubscriptions.length === 0) {
+        return {
+          success: true,
+          message: "No expired subscriptions to clear",
+          cleared: 0,
+        };
+      }
+
+      console.log(
+        `Found ${expiredSubscriptions.length} expired subscriptions to clear`
+      );
+
+      // Delete each expired subscription
+      let cleared = 0;
+      for (const subscription of expiredSubscriptions) {
+        console.log(
+          `Deleting expired subscription ${subscription.id} for topic ${subscription.topic}`
+        );
+        await db.externalSubscriptions.delete(subscription.id);
+        cleared++;
+      }
+
+      return {
+        success: true,
+        message: `Cleared ${cleared} expired subscriptions`,
+        cleared,
+      };
+    } catch (error) {
+      console.error(`Error clearing expired subscriptions: ${error}`);
+      return {
+        success: false,
+        message: `Error clearing expired subscriptions: ${error}`,
+        cleared: 0,
+      };
+    }
   }
 
   // Clean up expired verification tokens
