@@ -4,7 +4,6 @@ import { config } from "../config.ts";
 
 // Import route handlers
 import hubRouter from "./hub.ts";
-import firehoseRouter from "./firehose.ts";
 import staticRouter from "./static.ts";
 import webhookRouter from "./webhook.ts";
 
@@ -35,10 +34,6 @@ router.get("/health", (ctx: Context) => {
 // Mount the hub router
 router.use(hubRouter.routes());
 router.use(hubRouter.allowedMethods());
-
-// Mount the firehose router
-router.use(firehoseRouter.routes());
-router.use(firehoseRouter.allowedMethods());
 
 // Mount the static router
 router.use(staticRouter.routes());
