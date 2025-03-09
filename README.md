@@ -1,21 +1,52 @@
 # Super Duper Feeder
 
-A Spec compliant WebSub/PubSubHubbub service that allows users to subscribe to RSS feeds and get notified when new content is available.
+A real-time RSS feed subscription service with WebSub/PubSubHubbub and WebHook support.
+
+The Spec compliant WebSub/PubSubHubbub service allows clients to subscribe to RSS feeds and get notified when new content is available in real-time. The service also supports polling for feeds that don't support WebSub.
+
+There is also a developer friendly API for real-time updates to RSS feeds delivered directly to a developer defined endpoint.
+
+## WebSub Concepts
+
+WebSub (formerly PubSubHubbub) is a protocol that enables real-time notifications for content updates. It involves three main components:
+
+- **Publishers**: Content creators who notify the hub when they update their content
+- **Hub**: A server (like Super Duper Feeder) that receives update notifications from publishers and forwards them to subscribers
+- **Subscribers**: Services or applications that want to receive real-time updates about content changes
+
+The flow works as follows:
+
+1. A subscriber discovers the hub URL from a publisher's feed
+2. The subscriber sends a subscription request to the hub
+3. The hub verifies the subscription request with the subscriber
+4. When the publisher updates content, they notify the hub
+5. The hub fetches the updated content and sends it to all subscribers
 
 ## Features
 
 - WebSub/PubSubHubbub hub functionality
+  - Support for both subscription and publishing operations
+  - Automatic verification of subscription requests
+  - Content distribution to verified subscribers
 - RSS feed polling for feeds that don't support WebSub
-- Real-time updates via WebSockets, Server-Sent Events (SSE), and webhooks
-- Admin interface for system management
-- Simple, clean UI with documentation
+  - Automatic detection of feed updates
+  - Configurable polling intervals
+  - Support for conditional GET with ETag and Last-Modified
+- Webhook API for real-time updates
+  - Automatic hub discovery for feeds
+  - Callback verification for security
+  - Fallback to polling when WebSub is not supported
+- Simple, clean UI with comprehensive documentation
+  - Feed subscription management
+  - WebSub hub interaction
+  - Detailed API documentation
 
 ## Technology Stack
 
 - Runtime: Deno
 - Hosting: Deno Deploy
 - Database: DenoKV
-- Queue: Deno Deploy's built-in queue system
+- Scheduling: Deno cron jobs for periodic tasks
 
 ## Getting Started
 
@@ -45,12 +76,31 @@ The documentation is available at http://localhost:8000/docs when running locall
 
 ### Endpoints
 
-- `/` - WebSub hub endpoint
-- `/docs` - Documentation
+#### WebSub Hub Endpoints
+
+- `POST /` - Main hub endpoint for subscription and publishing operations
+- `GET /` - Redirects to the UI
+
+#### Webhook API
+
+- `POST /api/webhook` - Subscribe to a feed using WebSub with automatic hub discovery
+- `GET /api/webhook/verify/:token` - Manually verify a callback URL
+
+#### Callback Handling
+
+- `GET/POST /callback/:id` - Handles callbacks from external WebSub hubs
+
+#### UI Endpoints
+
+- `/ui` - Main UI page
+- `/ui/subscribe.html` - Feed subscription page
+- `/ui/unsubscribe.html` - Feed unsubscription page
+- `/ui/subscriptions.html` - Subscription management page
+
+#### Other Endpoints
+
 - `/health` - Health check endpoint
-- `/firehose/ws` - WebSocket endpoint for real-time updates
-- `/firehose/sse` - Server-Sent Events endpoint for real-time updates
-- `/firehose/webhook` - Webhook configuration endpoint
+- `/api` - API information endpoint
 
 ### Deployment
 
@@ -66,16 +116,17 @@ The service is deployed to Deno Deploy at: [superduperfeeder.deno.dev](https://s
 ├── routes/                 # API routes
 │   ├── index.ts            # Main router
 │   ├── hub.ts              # WebSub hub endpoints
-│   ├── firehose.ts         # Firehose endpoints
+│   ├── webhook.ts          # Webhook endpoints
 │   └── static.ts           # Static file serving
 ├── services/               # Business logic
 │   ├── hub.ts              # WebSub hub service
 │   ├── polling.ts          # RSS polling service
-│   └── firehose.ts         # Firehose service
+│   └── webhook.ts          # Webhook service
 ├── models/                 # Data models
 │   ├── subscription.ts     # Subscription model
 │   ├── feed.ts             # Feed model
-│   ├── webhook.ts          # Webhook model
+│   ├── external_subscription.ts # External subscription model
+│   ├── user_callback.ts    # User callback model
 │   └── user.ts             # User model
 ├── utils/                  # Utilities
 │   ├── database.ts         # Database connection
@@ -89,13 +140,39 @@ The service is deployed to Deno Deploy at: [superduperfeeder.deno.dev](https://s
 │   └── README.md           # Test documentation
 └── ui/                     # UI assets
     └── public/             # Public UI assets
-        ├── index.html      # Documentation page
-        └── styles.css      # CSS styles
+        ├── ui/             # Main UI pages
+        │   ├── index.html  # Home page
+        │   ├── subscribe.html # Subscribe page
+        │   ├── unsubscribe.html # Unsubscribe page
+        │   ├── subscriptions.html # Manage subscriptions page
+        │   └── styles.css  # UI styles
+        └── docs/           # Documentation
+            ├── index.html  # Documentation page
+            └── styles.css  # Documentation styles
 ```
 
 ## API Documentation
 
-See the [documentation](https://superduperfeeder.deno.dev/docs) for detailed API usage.
+The service provides a comprehensive API for interacting with the WebSub hub and managing feed subscriptions:
+
+### WebSub Hub API
+
+- Subscribe to updates from a feed
+- Unsubscribe from a feed
+- Publish updates to subscribers
+
+### Webhook API
+
+- Subscribe to a feed with automatic hub discovery
+- Verify callback URLs for security
+- Receive real-time updates via callbacks
+
+### Callback Verification
+
+- Automatic verification of subscription requests
+- Token-based verification for callbacks
+
+See the [documentation](https://superduperfeeder.deno.dev/docs) for detailed API usage, including request/response formats, error handling, and best practices.
 
 ## Deno Deploy Compatibility
 

@@ -1,4 +1,4 @@
-// External subscription model for subscribing to external WebSub hubs
+// External subscription model for subscribing to external WebSub hubs. This specifically is used for managing the /api/webhook part of the site, not the actual WebSub hub itself that we also run.
 
 import { crypto } from "../deps.ts";
 
