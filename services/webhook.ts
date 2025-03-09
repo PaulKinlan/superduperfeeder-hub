@@ -863,7 +863,9 @@ export class WebhookService {
       verificationUrl.searchParams.set("token", callback.verificationToken);
 
       console.log(
-        `Sending verification request to ${verificationUrl.toString()}`
+        `Sending verification request to ${verificationUrl.toString()} for ${
+          callback.id
+        }`
       );
 
       // Send the verification request
