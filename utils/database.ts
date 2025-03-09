@@ -5,6 +5,8 @@ import { SubscriptionStore } from "../models/subscription.ts";
 import { FeedStore } from "../models/feed.ts";
 import { WebhookStore } from "../models/webhook.ts";
 import { UserStore } from "../models/user.ts";
+import { ExternalSubscriptionStore } from "../models/external_subscription.ts";
+import { UserCallbackStore } from "../models/user_callback.ts";
 
 // Class for managing the database connection and stores
 export class Database {
@@ -16,6 +18,8 @@ export class Database {
   public feeds: FeedStore;
   public webhooks: WebhookStore;
   public users: UserStore;
+  public externalSubscriptions: ExternalSubscriptionStore;
+  public userCallbacks: UserCallbackStore;
 
   private constructor(kv: Deno.Kv) {
     this.kv = kv;
@@ -25,6 +29,8 @@ export class Database {
     this.feeds = new FeedStore(kv);
     this.webhooks = new WebhookStore(kv);
     this.users = new UserStore(kv);
+    this.externalSubscriptions = new ExternalSubscriptionStore(kv);
+    this.userCallbacks = new UserCallbackStore(kv);
   }
 
   // Get the singleton instance

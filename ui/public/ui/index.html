@@ -60,6 +60,69 @@ hub.callback=https://example.com/callback&hub.mode=subscribe&hub.topic=https://e
       </p>
     </section>
 
+    <section id="webhook">
+      <h2>Feed Subscription Webhook</h2>
+      <p>
+        The webhook endpoint allows you to subscribe to any feed URL. It will automatically detect if the feed
+        supports WebSub and subscribe to its hub. If the feed doesn't support WebSub, it will fall back to using
+        our polling mechanism.
+      </p>
+
+      <h3>Subscribe to a Feed</h3>
+      <form id="webhook-form" action="/api/webhook" method="post">
+        <div class="form-group">
+          <label for="topic">Feed URL:</label>
+          <input type="url" id="topic" name="topic" required placeholder="https://example.com/feed.xml">
+        </div>
+        <div class="form-group">
+          <label for="callback">Callback URL (optional):</label>
+          <input type="url" id="callback" name="callback" placeholder="https://your-server.com/webhook">
+          <small>If provided, feed updates will be forwarded to this URL</small>
+        </div>
+        <button type="submit">Subscribe</button>
+      </form>
+
+      <div id="webhook-result" class="result-box" style="display: none;">
+        <h4>Result:</h4>
+        <pre id="webhook-result-content"></pre>
+      </div>
+
+      <script>
+        document.getElementById('webhook-form').addEventListener('submit', async function (e) {
+          e.preventDefault();
+
+          const form = this;
+          const resultBox = document.getElementById('webhook-result');
+          const resultContent = document.getElementById('webhook-result-content');
+
+          try {
+            const formData = new FormData(form);
+            const response = await fetch(form.action, {
+              method: form.method,
+              body: formData
+            });
+
+            const result = await response.json();
+            resultContent.textContent = JSON.stringify(result, null, 2);
+            resultBox.style.display = 'block';
+
+            if (response.ok) {
+              resultBox.classList.remove('error');
+              resultBox.classList.add('success');
+            } else {
+              resultBox.classList.remove('success');
+              resultBox.classList.add('error');
+            }
+          } catch (error) {
+            resultContent.textContent = `Error: ${error.message}`;
+            resultBox.style.display = 'block';
+            resultBox.classList.remove('success');
+            resultBox.classList.add('error');
+          }
+        });
+      </script>
+    </section>
+
     <section id="firehose">
       <h2>Firehose</h2>
       <p>
@@ -93,6 +156,12 @@ Content-Type: application/json
       <ul>
         <li><code>POST /</code> - Main hub endpoint for subscription and publishing</li>
         <li><code>GET /</code> - Documentation and UI</li>
+      </ul>
+
+      <h3>Webhook Endpoints</h3>
+      <ul>
+        <li><code>POST /api/webhook</code> - Subscribe to a feed URL (automatically detects WebSub support)</li>
+        <li><code>GET /callback/:id</code> - Callback URL for external WebSub hubs</li>
       </ul>
 
       <h3>Firehose Endpoints</h3>
