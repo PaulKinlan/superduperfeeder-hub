@@ -2,7 +2,6 @@
 
 import { config } from "../config.ts";
 import { getDatabase } from "../utils/database.ts";
-import { ExternalSubscription } from "../models/external_subscription.ts";
 import { crypto, parseFeed } from "../deps.ts";
 import { HubService } from "./hub.ts";
 
