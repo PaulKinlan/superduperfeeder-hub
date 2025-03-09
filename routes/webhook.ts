@@ -18,7 +18,7 @@ router.post("/api/webhook", async (ctx: Context) => {
 
     if (!topic) {
       console.log("Missing topic parameter");
-      console.log("Request ctx:", ctx);
+      console.log("Request request:", ctx.request);
       console.log("Request body:", body);
       ctx.response.status = 400;
       ctx.response.body = {
