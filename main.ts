@@ -7,7 +7,6 @@ import router from "./routes/index.ts";
 
 // Import services
 import { PollingService } from "./services/polling.ts";
-import { FirehoseService } from "./services/firehose.ts";
 import { WebhookService } from "./services/webhook.ts";
 import { STATUS_CODE } from "@std/http";
 
@@ -64,11 +63,6 @@ PollingService.start().catch((error) => {
 // Start the webhook renewal service
 WebhookService.startRenewalService().catch((error) => {
   console.error("Error starting webhook renewal service:", error);
-});
-
-// Publish a system event
-FirehoseService.publishSystemEvent("Server started").catch((error) => {
-  console.error("Error publishing system event:", error);
 });
 
 // Start the server

@@ -3,7 +3,6 @@
 import { Router } from "../deps.ts";
 import type { Context } from "@oak/oak";
 import { HubService } from "../services/hub.ts";
-import { FirehoseService } from "../services/firehose.ts";
 
 const router = new Router();
 
@@ -59,15 +58,6 @@ router.post("/api/subscribe", async (ctx: Context) => {
       secret,
     });
 
-    // Publish a subscription update event
-    if (result.success) {
-      await FirehoseService.publishSubscriptionUpdate(
-        "subscribe",
-        topic,
-        callback
-      );
-    }
-
     // Return the result
     ctx.response.status = result.success ? 202 : 400;
     ctx.response.body = result;
@@ -110,15 +100,6 @@ router.post("/api/unsubscribe", async (ctx: Context) => {
       topic,
       callback,
     });
-
-    // Publish a subscription update event
-    if (result.success) {
-      await FirehoseService.publishSubscriptionUpdate(
-        "unsubscribe",
-        topic,
-        callback
-      );
-    }
 
     // Return the result
     ctx.response.status = result.success ? 202 : 400;
@@ -177,15 +158,6 @@ router.post("/", async (ctx: Context) => {
         leaseSeconds,
         secret,
       });
-
-      // Publish a subscription update event
-      if (result.success) {
-        await FirehoseService.publishSubscriptionUpdate(
-          mode as "subscribe" | "unsubscribe",
-          topic,
-          callback
-        );
-      }
 
       // Return the result
       ctx.response.status = result.success ? 202 : 400;
