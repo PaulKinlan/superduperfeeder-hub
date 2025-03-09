@@ -16,36 +16,6 @@ export interface FirehoseEvent {
 
 // Class for handling firehose functionality
 export class FirehoseService {
-  private static clients: Set<{
-    type: "sse" | "ws";
-    send: (event: FirehoseEvent) => void;
-  }> = new Set();
-
-  // Register a new client
-  static registerClient(
-    type: "sse" | "ws",
-    send: (event: FirehoseEvent) => void
-  ): () => void {
-    const client = { type, send };
-    this.clients.add(client);
-
-    // Return a function to unregister the client
-    return () => {
-      this.clients.delete(client);
-    };
-  }
-
-  // Broadcast an event to all clients
-  static broadcast(event: FirehoseEvent): void {
-    for (const client of this.clients) {
-      try {
-        client.send(event);
-      } catch (error) {
-        console.error(`Error sending event to ${client.type} client:`, error);
-      }
-    }
-  }
-
   // Send an event to webhooks
   static async sendToWebhooks(
     event: FirehoseEvent,
@@ -182,9 +152,6 @@ export class FirehoseService {
       },
     };
 
-    // Broadcast to clients
-    this.broadcast(event);
-
     // Send to webhooks
     await this.sendToWebhooks(event, feedId, topic);
   }
@@ -206,9 +173,6 @@ export class FirehoseService {
       },
     };
 
-    // Broadcast to clients
-    this.broadcast(event);
-
     // Send to webhooks
     await this.sendToWebhooks(event);
   }
@@ -227,9 +191,6 @@ export class FirehoseService {
         details,
       },
     };
-
-    // Broadcast to clients
-    this.broadcast(event);
 
     // Send to webhooks
     await this.sendToWebhooks(event);

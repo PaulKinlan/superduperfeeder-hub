@@ -67,26 +67,6 @@ hub.callback=https://example.com/callback&hub.mode=subscribe&hub.topic=https://e
         Server-Sent Events (SSE), and webhooks.
       </p>
 
-      <h3>WebSocket</h3>
-      <p>
-        Connect to the WebSocket endpoint at <code>wss://superduperfeeder.deno.dev/firehose/ws</code>.
-      </p>
-      <pre><code>const ws = new WebSocket('wss://superduperfeeder.deno.dev/firehose/ws');
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Received update:', data);
-};</code></pre>
-
-      <h3>Server-Sent Events (SSE)</h3>
-      <p>
-        Connect to the SSE endpoint at <code>https://superduperfeeder.deno.dev/firehose/sse</code>.
-      </p>
-      <pre><code>const eventSource = new EventSource('https://superduperfeeder.deno.dev/firehose/sse');
-eventSource.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Received update:', data);
-};</code></pre>
-
       <h3>Webhooks</h3>
       <p>
         Register a webhook to receive updates via HTTP POST requests.
