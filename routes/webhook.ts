@@ -14,6 +14,8 @@ router.post("/api/webhook", async (ctx: Context) => {
     const topic = body.get("topic") as string;
     const callback = body.get("callback") as string | undefined;
 
+    console.log("Webhook request:", { topic, callback });
+
     if (!topic) {
       ctx.response.status = 400;
       ctx.response.body = {
