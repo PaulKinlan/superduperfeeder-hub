@@ -451,18 +451,4 @@ export class PollingService {
       };
     }
   }
-
-  // Start the polling service
-  static async start(): Promise<void> {
-    console.log("Starting polling service...");
-
-    // Poll feeds immediately
-    await PollingService.pollFeeds();
-
-    // Set up a cron job to poll feeds every minute
-    Deno.cron("Poll RSS Feeds", "* * * * *", async () => {
-      console.log("Running scheduled feed polling...");
-      await PollingService.pollFeeds();
-    });
-  }
 }

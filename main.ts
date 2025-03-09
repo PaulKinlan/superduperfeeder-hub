@@ -55,14 +55,27 @@ console.log(`Server running on http://localhost:${port}`);
 // Start the services
 console.log("Starting services...");
 
-// Start the polling service
-PollingService.start().catch((error) => {
-  console.error("Error starting polling service:", error);
+Deno.cron("Poll RSS Feeds", "* * * * *", async () => {
+  console.log("Running scheduled feed polling...");
+  await PollingService.pollFeeds();
 });
 
-// Start the webhook renewal service
-WebhookService.startRenewalService().catch((error) => {
-  console.error("Error starting webhook renewal service:", error);
+// Set up a cron job to renew subscriptions every hour
+Deno.cron("Renew WebSub Subscriptions", "0 * * * *", async () => {
+  console.log("Running scheduled subscription renewal...");
+  await WebhookService.renewSubscriptions();
+});
+
+// Set up a cron job to clean up expired verification tokens every hour
+Deno.cron("Clean Up Expired Verifications", "0 * * * *", async () => {
+  console.log("Running scheduled cleanup of expired verifications...");
+  await WebhookService.cleanupExpiredVerifications();
+});
+
+// Set up a cron job to clear expired subscriptions every hour
+Deno.cron("Clear Expired Subscriptions", "0 * * * *", async () => {
+  console.log("Running scheduled cleanup of expired subscriptions...");
+  await WebhookService.clearExpiredSubscriptions();
 });
 
 // Start the server

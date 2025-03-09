@@ -714,38 +714,6 @@ export class WebhookService {
     }
   }
 
-  // Start the subscription renewal service
-  static async startRenewalService(): Promise<void> {
-    console.log("Starting subscription renewal service...");
-
-    // Renew subscriptions immediately
-    await WebhookService.renewSubscriptions();
-
-    // Clean up expired verification tokens
-    await WebhookService.cleanupExpiredVerifications();
-
-    // Clear expired subscriptions
-    await WebhookService.clearExpiredSubscriptions();
-
-    // Set up a cron job to renew subscriptions every hour
-    Deno.cron("Renew WebSub Subscriptions", "0 * * * *", async () => {
-      console.log("Running scheduled subscription renewal...");
-      await WebhookService.renewSubscriptions();
-    });
-
-    // Set up a cron job to clean up expired verification tokens every hour
-    Deno.cron("Clean Up Expired Verifications", "0 * * * *", async () => {
-      console.log("Running scheduled cleanup of expired verifications...");
-      await WebhookService.cleanupExpiredVerifications();
-    });
-
-    // Set up a cron job to clear expired subscriptions every hour
-    Deno.cron("Clear Expired Subscriptions", "0 * * * *", async () => {
-      console.log("Running scheduled cleanup of expired subscriptions...");
-      await WebhookService.clearExpiredSubscriptions();
-    });
-  }
-
   // Clear expired external subscriptions
   static async clearExpiredSubscriptions(): Promise<{
     success: boolean;
