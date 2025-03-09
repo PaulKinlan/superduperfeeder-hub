@@ -12,6 +12,9 @@ export interface UserCallback {
   errorCount: number;
   lastError?: string;
   lastErrorTime?: Date; // When the last error occurred
+  verified: boolean; // Whether the callback has been verified
+  verificationToken?: string; // Token for verifying ownership
+  verificationExpires?: Date; // When the verification token expires
 }
 
 // Class for managing user callbacks in DenoKV

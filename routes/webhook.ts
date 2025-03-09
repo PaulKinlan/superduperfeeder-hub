@@ -30,7 +30,18 @@ router.post("/api/webhook", async (ctx: Context) => {
 
     // Return appropriate response
     ctx.response.status = result.success ? 202 : 400;
-    ctx.response.body = result;
+
+    // Include information about verification status in the response
+    if (result.success && result.pendingVerification) {
+      ctx.response.body = {
+        ...result,
+        message: result.message,
+        verificationInstructions:
+          "Your callback URL requires verification. A verification request has been sent to your callback URL. The callback should respond with the verification token to confirm ownership.",
+      };
+    } else {
+      ctx.response.body = result;
+    }
   } catch (error: unknown) {
     console.error("Error processing webhook request:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -124,6 +135,39 @@ router.all("/callback/:id", async (ctx: Context) => {
 
     ctx.response.status = 500;
     ctx.response.body = `Internal server error: ${errorMessage}`;
+  }
+});
+
+// Verification endpoint for user callbacks
+router.get("/api/webhook/verify/:token", async (ctx: Context) => {
+  try {
+    // Get the token from the URL path
+    const token = ctx.request.url.pathname.split("/").pop();
+
+    if (!token) {
+      ctx.response.status = 400;
+      ctx.response.body = {
+        success: false,
+        message: "Missing token parameter",
+      };
+      return;
+    }
+
+    // Call WebhookService.verifyCallback with the token
+    const result = await WebhookService.verifyCallback(token);
+
+    // Return appropriate response
+    ctx.response.status = result.success ? 200 : 400;
+    ctx.response.body = result;
+  } catch (error: unknown) {
+    console.error("Error processing verification request:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    ctx.response.status = 500;
+    ctx.response.body = {
+      success: false,
+      message: `Internal server error: ${errorMessage}`,
+    };
   }
 });
 

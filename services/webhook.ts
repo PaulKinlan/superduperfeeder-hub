@@ -18,12 +18,15 @@ export class WebhookService {
     usingExternalHub: boolean;
     subscriptionId?: string;
     callbackId?: string;
+    pendingVerification?: boolean;
   }> {
     try {
       const db = await getDatabase();
 
       // If a userCallbackUrl is provided, check if it already exists for this topic
       let callbackId: string | undefined;
+      let pendingVerification = false;
+
       if (userCallbackUrl) {
         const existingCallback = await db.userCallbacks.getByTopicAndUrl(
           topic,
@@ -32,13 +35,31 @@ export class WebhookService {
 
         if (existingCallback) {
           callbackId = existingCallback.id;
+
+          // If callback exists but is not verified, send verification again
+          if (!existingCallback.verified) {
+            await WebhookService.sendVerificationRequest(existingCallback);
+            pendingVerification = true;
+          }
         } else {
-          // Create a new user callback
+          // Create a new user callback with verification token
+          const verificationToken = crypto.randomUUID();
+          const verificationExpires = new Date();
+          verificationExpires.setHours(verificationExpires.getHours() + 24); // 24 hour expiration
+
           const newCallback = await db.userCallbacks.create({
             topic,
             callbackUrl: userCallbackUrl,
+            verified: false,
+            verificationToken,
+            verificationExpires,
           });
+
           callbackId = newCallback.id;
+
+          // Send verification request
+          await WebhookService.sendVerificationRequest(newCallback);
+          pendingVerification = true;
         }
       }
 
@@ -50,11 +71,14 @@ export class WebhookService {
         return {
           success: true,
           message: userCallbackUrl
-            ? "Added callback URL to existing subscription"
+            ? pendingVerification
+              ? "Added callback URL to existing subscription (verification pending)"
+              : "Added callback URL to existing subscription"
             : "Already subscribed to this topic",
           usingExternalHub: !existingSubscription.usingFallback,
           subscriptionId: existingSubscription.id,
           callbackId,
+          pendingVerification,
         };
       }
 
@@ -207,6 +231,7 @@ export class WebhookService {
     success: boolean;
     message: string;
     subscriptionId?: string;
+    pendingVerification?: boolean;
   }> {
     try {
       const db = await getDatabase();
@@ -276,10 +301,25 @@ export class WebhookService {
 
       console.log(`Subscription request sent to ${hub} for ${topic}`);
 
+      // Determine if there's a pending verification for the user callback
+      let pendingVerification = false;
+      if (userCallbackUrl) {
+        const callback = await db.userCallbacks.getByTopicAndUrl(
+          topic,
+          userCallbackUrl
+        );
+        if (callback && !callback.verified) {
+          pendingVerification = true;
+        }
+      }
+
       return {
         success: true,
-        message: "Subscription request sent to hub",
+        message: pendingVerification
+          ? "Subscription request sent to hub (callback verification pending)"
+          : "Subscription request sent to hub",
         subscriptionId: subscription.id,
+        pendingVerification,
       };
     } catch (error) {
       console.error(`Error subscribing to external hub: ${error}`);
@@ -297,6 +337,7 @@ export class WebhookService {
     message: string;
     usingExternalHub: boolean;
     subscriptionId?: string;
+    pendingVerification?: boolean;
   }> {
     try {
       const db = await getDatabase();
@@ -355,11 +396,26 @@ export class WebhookService {
       subscription.verified = true;
       await db.externalSubscriptions.update(subscription);
 
+      // Determine if there's a pending verification for the user callback
+      let pendingVerification = false;
+      if (userCallbackUrl) {
+        const callback = await db.userCallbacks.getByTopicAndUrl(
+          topic,
+          userCallbackUrl
+        );
+        if (callback && !callback.verified) {
+          pendingVerification = true;
+        }
+      }
+
       return {
         success: true,
-        message: "Subscribed using our own hub",
+        message: pendingVerification
+          ? "Subscribed using our own hub (callback verification pending)"
+          : "Subscribed using our own hub",
         usingExternalHub: false,
         subscriptionId: subscription.id,
+        pendingVerification,
       };
     } catch (error) {
       console.error(`Error subscribing to own hub: ${error}`);
@@ -470,13 +526,21 @@ export class WebhookService {
         // Get all user callbacks for this topic
         const userCallbacks = await db.userCallbacks.getByTopic(topic);
 
-        // Forward to all user callbacks
-        if (userCallbacks.length > 0) {
+        // Forward to all verified user callbacks
+        const verifiedCallbacks = userCallbacks.filter(
+          (callback) => callback.verified
+        );
+
+        if (verifiedCallbacks.length > 0) {
           console.log(
-            `Forwarding content to ${userCallbacks.length} callbacks`
+            `Forwarding content to ${
+              verifiedCallbacks.length
+            } verified callbacks (${
+              userCallbacks.length - verifiedCallbacks.length
+            } unverified callbacks skipped)`
           );
 
-          for (const callback of userCallbacks) {
+          for (const callback of verifiedCallbacks) {
             try {
               const response = await fetch(callback.callbackUrl, {
                 method: "POST",
@@ -658,10 +722,171 @@ export class WebhookService {
     // Renew subscriptions immediately
     await WebhookService.renewSubscriptions();
 
+    // Clean up expired verification tokens
+    await WebhookService.cleanupExpiredVerifications();
+
     // Set up a cron job to renew subscriptions every hour
     Deno.cron("Renew WebSub Subscriptions", "0 * * * *", async () => {
       console.log("Running scheduled subscription renewal...");
       await WebhookService.renewSubscriptions();
     });
+
+    // Set up a cron job to clean up expired verification tokens every day
+    Deno.cron("Clean Up Expired Verifications", "0 0 * * *", async () => {
+      console.log("Running scheduled cleanup of expired verifications...");
+      await WebhookService.cleanupExpiredVerifications();
+    });
+  }
+
+  // Clean up expired verification tokens
+  static async cleanupExpiredVerifications(): Promise<{
+    success: boolean;
+    message: string;
+    cleaned: number;
+  }> {
+    try {
+      const db = await getDatabase();
+      const now = new Date();
+      let cleaned = 0;
+
+      // Get all callbacks
+      const callbacks = await db.userCallbacks.getAll();
+
+      // Filter callbacks with expired verification tokens
+      const expiredCallbacks = callbacks.filter(
+        (callback) =>
+          !callback.verified &&
+          callback.verificationExpires &&
+          callback.verificationExpires < now
+      );
+
+      console.log(
+        `Found ${expiredCallbacks.length} callbacks with expired verification tokens`
+      );
+
+      // Delete expired callbacks
+      for (const callback of expiredCallbacks) {
+        console.log(
+          `Deleting callback ${callback.id} with expired verification token`
+        );
+        await db.userCallbacks.delete(callback.id);
+        cleaned++;
+      }
+
+      return {
+        success: true,
+        message: `Cleaned up ${cleaned} callbacks with expired verification tokens`,
+        cleaned,
+      };
+    } catch (error) {
+      console.error(`Error cleaning up expired verifications: ${error}`);
+      return {
+        success: false,
+        message: `Error cleaning up expired verifications: ${error}`,
+        cleaned: 0,
+      };
+    }
+  }
+
+  // Send a verification request to a callback URL
+  static async sendVerificationRequest(callback: {
+    id: string;
+    callbackUrl: string;
+    verificationToken?: string;
+  }): Promise<boolean> {
+    try {
+      if (!callback.verificationToken) {
+        console.error(`No verification token for callback ${callback.id}`);
+        return false;
+      }
+
+      // Construct the verification URL
+      const verificationUrl = new URL(callback.callbackUrl);
+      verificationUrl.searchParams.set("mode", "verify");
+      verificationUrl.searchParams.set("token", callback.verificationToken);
+
+      console.log(
+        `Sending verification request to ${verificationUrl.toString()}`
+      );
+
+      // Send the verification request
+      const response = await fetch(verificationUrl.toString(), {
+        method: "GET",
+        headers: {
+          "User-Agent": `SuperDuperFeeder/${config.version}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error(
+          `Verification request failed: ${response.status} ${response.statusText}`
+        );
+        return false;
+      }
+
+      // Check if the response contains the token
+      const responseText = await response.text();
+      if (responseText.trim() === callback.verificationToken) {
+        console.log(`Callback ${callback.id} verified successfully`);
+        return true;
+      } else {
+        console.error(
+          `Verification token mismatch for callback ${callback.id}`
+        );
+        return false;
+      }
+    } catch (error) {
+      console.error(`Error sending verification request: ${error}`);
+      return false;
+    }
+  }
+
+  // Verify a callback using a token
+  static async verifyCallback(token: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    try {
+      const db = await getDatabase();
+
+      // Find all callbacks with this verification token
+      const callbacks = await db.userCallbacks.getAll();
+      const callback = callbacks.find((c) => c.verificationToken === token);
+
+      if (!callback) {
+        return {
+          success: false,
+          message: "Invalid verification token",
+        };
+      }
+
+      // Check if the token has expired
+      if (
+        callback.verificationExpires &&
+        callback.verificationExpires < new Date()
+      ) {
+        return {
+          success: false,
+          message: "Verification token has expired",
+        };
+      }
+
+      // Mark the callback as verified
+      callback.verified = true;
+      callback.verificationToken = undefined;
+      callback.verificationExpires = undefined;
+      await db.userCallbacks.update(callback);
+
+      return {
+        success: true,
+        message: "Callback verified successfully",
+      };
+    } catch (error) {
+      console.error(`Error verifying callback: ${error}`);
+      return {
+        success: false,
+        message: `Error verifying callback: ${error}`,
+      };
+    }
   }
 }
