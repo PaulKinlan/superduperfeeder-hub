@@ -103,16 +103,6 @@ Content-Type: application/x-www-form-urlencoded
 hub.callback=https://example.com/callback&hub.mode=unsubscribe&hub.topic=https://example.com/feed.xml</code></pre>
       </div>
 
-
-
-
-
-      <div class="endpoint">
-        <h4>List Webhooks</h4>
-        <p><code>GET /firehose/webhook</code></p>
-        <p>List all registered webhooks.</p>
-      </div>
-
       <div id="webhook-api" class="endpoint">
         <h4>WebSub Subscription Endpoint</h4>
         <p><code>POST /api/webhook</code></p>
@@ -142,8 +132,7 @@ hub.callback=https://example.com/callback&hub.mode=unsubscribe&hub.topic=https:/
               <td><code>callback</code></td>
               <td>string</td>
               <td>No</td>
-              <td>Your callback URL where updates will be forwarded. If not provided, you can still access updates via
-                the firehose endpoints.</td>
+              <td>Your callback URL where updates will be forwarded.</td>
             </tr>
           </tbody>
         </table>
@@ -270,7 +259,6 @@ async function subscribeToFeed(topicUrl, callbackUrl) {
           </li>
           <li>If no WebSub hub is found, the service will use its own hub as a fallback</li>
           <li>If a callback URL is provided, updates will be forwarded to that URL</li>
-          <li>If no callback URL is provided, you can still access updates via the firehose endpoints</li>
           <li>Subscriptions have a default lease time and will be automatically renewed</li>
         </ul>
       </div>
