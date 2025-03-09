@@ -37,8 +37,18 @@ export class WebhookService {
 
           // If callback exists but is not verified, send verification again
           if (!existingCallback.verified) {
-            await WebhookService.sendVerificationRequest(existingCallback);
-            pendingVerification = true;
+            if (!existingCallback.verificationToken) {
+              // There was a time when we didn't have token verification
+              console.error(
+                `No verification token for callback ${existingCallback.id} overwriting`
+              );
+              existingCallback.verified = true;
+              db.userCallbacks.update(existingCallback);
+              pendingVerification = false;
+            } else {
+              await WebhookService.sendVerificationRequest(existingCallback);
+              pendingVerification = true;
+            }
           }
         } else {
           // Create a new user callback with verification token
@@ -821,6 +831,7 @@ export class WebhookService {
   }): Promise<boolean> {
     try {
       if (!callback.verificationToken) {
+        // There was a time when we didn't have token verification
         console.error(`No verification token for callback ${callback.id}`);
         return false;
       }
