@@ -123,32 +123,6 @@ hub.callback=https://example.com/callback&hub.mode=subscribe&hub.topic=https://e
       </script>
     </section>
 
-    <section id="firehose">
-      <h2>Firehose</h2>
-      <p>
-        The firehose provides real-time updates for all content changes. It supports WebSockets,
-        Server-Sent Events (SSE), and webhooks.
-      </p>
-
-      <h3>Webhooks</h3>
-      <p>
-        Register a webhook to receive updates via HTTP POST requests.
-      </p>
-      <pre><code>POST https://superduperfeeder.deno.dev/firehose/webhook
-Content-Type: application/json
-
-{
-  "url": "https://example.com/webhook",
-  "contentType": "application/json",
-  "filters": [
-    {
-      "type": "topic",
-      "value": "https://example.com/feed.xml"
-    }
-  ]
-}</code></pre>
-    </section>
-
     <section id="api-reference">
       <h2>API Reference</h2>
 
@@ -162,15 +136,6 @@ Content-Type: application/json
       <ul>
         <li><code>POST /api/webhook</code> - Subscribe to a feed URL (automatically detects WebSub support)</li>
         <li><code>GET /callback/:id</code> - Callback URL for external WebSub hubs</li>
-      </ul>
-
-      <h3>Firehose Endpoints</h3>
-      <ul>
-        <li><code>GET /firehose/ws</code> - WebSocket connection for real-time updates</li>
-        <li><code>GET /firehose/sse</code> - Server-Sent Events endpoint for real-time updates</li>
-        <li><code>POST /firehose/webhook</code> - Register a webhook URL to receive updates</li>
-        <li><code>DELETE /firehose/webhook/:id</code> - Remove a registered webhook</li>
-        <li><code>GET /firehose/webhook</code> - List registered webhooks</li>
       </ul>
     </section>
   </main>
