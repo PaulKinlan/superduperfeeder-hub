@@ -315,12 +315,12 @@ export class PollingService {
             guid,
             url,
             title,
-            content,
-            summary,
+            content: "", // We don't need to store this
+            summary: "", // We dn't need to store this
             author,
             published,
             updated,
-            categories,
+            categories: [], // We don't need to store this,
           };
 
           if (existingItem) {
@@ -354,31 +354,14 @@ export class PollingService {
 
       // If we found new items, notify subscribers
       if (newItems > 0) {
-        // Get the latest items
-        const items = await db.feeds.getItemsByFeed(feed.id, 10);
+        // Instead of getting items from the database, use the parsed feed content directly
+        // This ensures subscribers get the complete, original feed content
 
-        // Create a notification
-        const notification = {
-          feed: {
-            id: feed.id,
-            url: feed.url,
-            title: feed.title,
-          },
-          items: items.map((item) => ({
-            id: item.id,
-            guid: item.guid,
-            url: item.url,
-            title: item.title,
-            summary: item.summary,
-            published: item.published,
-          })),
-        };
-
-        // Notify subscribers
+        // Notify subscribers with the original feed content
         await HubService.processContentNotification(
           feed.url,
-          JSON.stringify(notification),
-          "application/rss+xml" // for now, we only support on polling, we need to fix
+          content, // Use the original feed content from the fetch
+          response.headers.get("Content-Type") || "application/rss+xml"
         );
       }
 
