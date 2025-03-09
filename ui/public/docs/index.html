@@ -72,6 +72,7 @@
         <ul>
           <li><a href="#hub-endpoints">WebSub Hub Endpoints</a></li>
           <li><a href="#webhook-api">Webhook API</a></li>
+          <li><a href="#verification-endpoint">Webhook Verification Endpoint</a></li>
           <li><a href="#callback-endpoint">Callback Endpoint</a></li>
           <li><a href="#health-check">Health Check</a></li>
         </ul>
@@ -138,6 +139,46 @@ hub.callback=https://example.com/callback&hub.mode=unsubscribe&hub.topic=https:/
           </tbody>
         </table>
 
+        <h5>Callback Verification</h5>
+        <p>
+          <strong>Important:</strong> When you provide a callback URL, it must be verified before any updates are sent
+          to it. This ensures that you actually own the callback URL and prevents abuse.
+        </p>
+
+        <p>The verification process works as follows:</p>
+        <ol>
+          <li>You submit a webhook subscription with your callback URL</li>
+          <li>The system generates a verification token and sends a GET request to your callback URL with the token</li>
+          <li>Your callback endpoint must respond with the token in the response body</li>
+          <li>Once verified, your callback will start receiving updates</li>
+        </ol>
+
+        <p>The verification request will be sent to:</p>
+        <pre><code>GET {your-callback-url}?mode=verify&token={verification-token}</code></pre>
+
+        <p>Your callback endpoint should:</p>
+        <ol>
+          <li>Extract the token from the <code>token</code> query parameter</li>
+          <li>Respond with a 200 OK status code</li>
+          <li>Return the token as plain text in the response body</li>
+        </ol>
+
+        <p>Example callback handler for verification:</p>
+        <pre><code>// Example using Express.js
+app.get('/my-callback', (req, res) => {
+  // Check if this is a verification request
+  if (req.query.mode === 'verify' && req.query.token) {
+    // Return the token as plain text
+    res.type('text/plain').send(req.query.token);
+  } else {
+    // Handle other requests
+    res.status(400).send('Invalid request');
+  }
+});</code></pre>
+
+        <p>Verification tokens expire after 24 hours. If your callback is not verified within this time, you'll need to
+          submit a new subscription request.</p>
+
         <h5>Response</h5>
         <p>Status Code: <code>202 Accepted</code> on success, <code>400 Bad Request</code> on error,
           <code>500 Internal Server Error</code> on server error
@@ -149,7 +190,9 @@ hub.callback=https://example.com/callback&hub.mode=unsubscribe&hub.topic=https:/
   "message": "Description of the result",
   "usingExternalHub": true|false,
   "subscriptionId": "uuid-of-subscription",
-  "callbackId": "uuid-of-callback" // Only if callback was provided
+  "callbackId": "uuid-of-callback", // Only if callback was provided
+  "pendingVerification": true|false, // Indicates if the callback needs verification
+  "verificationInstructions": "Instructions for verifying the callback" // Only if pendingVerification is true
 }</code></pre>
 
         <h5>Success Response Fields</h5>
@@ -187,6 +230,16 @@ hub.callback=https://example.com/callback&hub.mode=unsubscribe&hub.topic=https:/
               <td><code>callbackId</code></td>
               <td>string</td>
               <td>The UUID of the created callback, only present if a callback URL was provided</td>
+            </tr>
+            <tr>
+              <td><code>pendingVerification</code></td>
+              <td>boolean</td>
+              <td>Indicates if the callback URL requires verification (true) or is already verified (false)</td>
+            </tr>
+            <tr>
+              <td><code>verificationInstructions</code></td>
+              <td>string</td>
+              <td>Instructions for verifying the callback URL, only present if pendingVerification is true</td>
             </tr>
           </tbody>
         </table>
@@ -261,6 +314,65 @@ async function subscribeToFeed(topicUrl, callbackUrl) {
           <li>If no WebSub hub is found, the service will use its own hub as a fallback</li>
           <li>If a callback URL is provided, updates will be forwarded to that URL</li>
           <li>Subscriptions have a default lease time and will be automatically renewed</li>
+        </ul>
+      </div>
+
+      <div id="verification-endpoint" class="endpoint">
+        <h4>Webhook Verification Endpoint</h4>
+        <p><code>GET /api/webhook/verify/:token</code></p>
+        <p>This endpoint is used to manually verify a callback URL. Normally, verification happens automatically when
+          your callback responds to the verification request, but you can also use this endpoint to manually verify a
+          callback if needed.</p>
+
+        <h5>Path Parameters</h5>
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>token</code></td>
+              <td>string</td>
+              <td>The verification token sent to your callback URL</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h5>Response</h5>
+        <p>Status Code: <code>200 OK</code> on success, <code>400 Bad Request</code> on error</p>
+
+        <p>Response Body (JSON):</p>
+        <pre><code>{
+  "success": true|false,
+  "message": "Description of the result"
+}</code></pre>
+
+        <h5>Success Response</h5>
+        <pre><code>{
+  "success": true,
+  "message": "Callback verified successfully"
+}</code></pre>
+
+        <h5>Error Responses</h5>
+        <pre><code>{
+  "success": false,
+  "message": "Invalid verification token"
+}
+
+{
+  "success": false,
+  "message": "Verification token has expired"
+}</code></pre>
+
+        <h5>Notes</h5>
+        <ul>
+          <li>Verification tokens expire after 24 hours</li>
+          <li>This endpoint is primarily for manual verification or debugging</li>
+          <li>In most cases, your callback should handle the verification request automatically</li>
         </ul>
       </div>
 
@@ -349,24 +461,80 @@ async function subscribe(callbackUrl, topicUrl, leaseSeconds = 86400) {
   }
 }</code></pre>
 
-      <h3>Handling WebSub Verification</h3>
+      <h3>Handling Verification Requests</h3>
       <p>
-        When the hub verifies a subscription, it sends a GET request to your callback URL:
+        Your callback endpoint needs to handle two types of verification requests:
+      </p>
+
+      <h4>1. WebSub Hub Verification</h4>
+      <p>
+        When a WebSub hub verifies a subscription, it sends a GET request to your callback URL:
       </p>
       <pre><code>// Example using Express.js
 app.get('/callback', (req, res) => {
-  const mode = req.query['hub.mode'];
-  const topic = req.query['hub.topic'];
-  const challenge = req.query['hub.challenge'];
-  const leaseSeconds = req.query['hub.lease_seconds'];
-  
-  if (mode === 'subscribe' || mode === 'unsubscribe') {
-    // Verify that this subscription/unsubscription is expected
-    // If it is, respond with the challenge
-    res.send(challenge);
-  } else {
-    res.status(400).send('Invalid request');
+  // Check if this is a WebSub verification request
+  if (req.query['hub.mode'] && req.query['hub.topic']) {
+    const mode = req.query['hub.mode'];
+    const topic = req.query['hub.topic'];
+    const challenge = req.query['hub.challenge'];
+    
+    if (mode === 'subscribe' || mode === 'unsubscribe') {
+      // Verify that this subscription/unsubscription is expected
+      // If it is, respond with the challenge
+      res.send(challenge);
+      return;
+    }
   }
+  
+  // Handle other types of requests
+  res.status(400).send('Invalid request');
+});</code></pre>
+
+      <h4>2. Callback Ownership Verification</h4>
+      <p>
+        When you register a callback URL with Super Duper Feeder, it sends a verification request to confirm you own the
+        URL:
+      </p>
+      <pre><code>// Example using Express.js
+app.get('/callback', (req, res) => {
+  // Check if this is a callback verification request
+  if (req.query.mode === 'verify' && req.query.token) {
+    // Return the token as plain text to verify ownership
+    res.type('text/plain').send(req.query.token);
+    return;
+  }
+  
+  // Handle WebSub verification or other requests
+  // ...
+});</code></pre>
+
+      <h4>Combined Handler</h4>
+      <p>
+        You can combine both handlers in a single endpoint:
+      </p>
+      <pre><code>// Example using Express.js
+app.get('/callback', (req, res) => {
+  // Check if this is a callback verification request
+  if (req.query.mode === 'verify' && req.query.token) {
+    // Return the token as plain text to verify ownership
+    res.type('text/plain').send(req.query.token);
+    return;
+  }
+  
+  // Check if this is a WebSub verification request
+  if (req.query['hub.mode'] && req.query['hub.topic']) {
+    const mode = req.query['hub.mode'];
+    const challenge = req.query['hub.challenge'];
+    
+    if ((mode === 'subscribe' || mode === 'unsubscribe') && challenge) {
+      // Respond with the challenge
+      res.send(challenge);
+      return;
+    }
+  }
+  
+  // Handle other types of requests
+  res.status(400).send('Invalid request');
 });</code></pre>
 
       <h3>Receiving Updates</h3>
@@ -389,12 +557,32 @@ app.post('/callback', express.raw({ type: 'application/atom+xml' }), (req, res) 
     <section id="best-practices">
       <h2>Best Practices</h2>
       <ul>
-        <li>Always verify subscription requests to prevent spam</li>
-        <li>Implement proper error handling for all API calls</li>
-        <li>Use appropriate lease times for subscriptions (typically 1-7 days)</li>
-        <li>Implement retry logic for failed webhook deliveries</li>
-        <li>Consider using WebSockets or SSE for real-time applications</li>
-        <li>Ensure your callback endpoint responds quickly to hub requests</li>
+        <li><strong>Implement callback verification properly</strong>
+          <p>Always ensure your callback endpoint correctly handles verification requests. This is essential for
+            security and ensures your callback will receive updates.</p>
+        </li>
+        <li><strong>Verify subscription requests</strong>
+          <p>When implementing a callback endpoint, always verify subscription requests to prevent spam.</p>
+        </li>
+        <li><strong>Handle both verification types</strong>
+          <p>Your callback endpoint should be able to handle both WebSub hub verification and callback ownership
+            verification.</p>
+        </li>
+        <li><strong>Implement proper error handling</strong>
+          <p>Add robust error handling for all API calls and webhook processing.</p>
+        </li>
+        <li><strong>Use appropriate lease times</strong>
+          <p>For WebSub subscriptions, use appropriate lease times (typically 1-7 days).</p>
+        </li>
+        <li><strong>Implement retry logic</strong>
+          <p>Add retry logic for failed webhook deliveries to ensure you don't miss updates.</p>
+        </li>
+        <li><strong>Consider real-time alternatives</strong>
+          <p>For some applications, WebSockets or SSE might be more appropriate than webhooks.</p>
+        </li>
+        <li><strong>Ensure quick responses</strong>
+          <p>Your callback endpoint should respond quickly to verification requests and content deliveries.</p>
+        </li>
       </ul>
     </section>
 
@@ -403,12 +591,43 @@ app.post('/callback', express.raw({ type: 'application/atom+xml' }), (req, res) 
       <h3>Common Issues</h3>
       <ul>
         <li>
-          <strong>Subscription verification fails</strong>
-          <p>Ensure your callback URL is publicly accessible and responds correctly to verification requests.</p>
+          <strong>Callback verification fails</strong>
+          <p>If your callback URL is not being verified:</p>
+          <ul>
+            <li>Ensure your callback URL is publicly accessible (not localhost or behind a firewall)</li>
+            <li>Check that your endpoint correctly responds to verification requests by returning the token</li>
+            <li>Verify that your endpoint responds with a 200 OK status code</li>
+            <li>Make sure the response body contains only the token, with no extra whitespace or HTML</li>
+            <li>If using a framework, ensure it's not adding any extra content to the response</li>
+          </ul>
+        </li>
+        <li>
+          <strong>Verification token expired</strong>
+          <p>If you see "Verification token has expired":</p>
+          <ul>
+            <li>Tokens expire after 24 hours</li>
+            <li>Submit a new subscription request to get a new verification token</li>
+            <li>Ensure your callback endpoint is set up correctly before requesting a new token</li>
+          </ul>
         </li>
         <li>
           <strong>Not receiving updates</strong>
-          <p>Check that your subscription is active and that your callback endpoint is functioning properly.</p>
+          <p>If your callback is not receiving updates:</p>
+          <ul>
+            <li>Check that your callback has been verified (the pendingVerification flag should be false)</li>
+            <li>Ensure your callback endpoint is functioning properly</li>
+            <li>Check that the subscription is active and has not expired</li>
+            <li>Verify that the feed is actually being updated</li>
+          </ul>
+        </li>
+        <li>
+          <strong>WebSub hub verification fails</strong>
+          <p>If the WebSub hub verification fails:</p>
+          <ul>
+            <li>Ensure your callback URL is publicly accessible</li>
+            <li>Check that your endpoint correctly responds to hub.challenge requests</li>
+            <li>Verify that your endpoint responds with the exact challenge string</li>
+          </ul>
         </li>
         <li>
           <strong>WebSocket connection drops</strong>
