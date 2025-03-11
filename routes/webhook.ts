@@ -73,6 +73,7 @@ router.all("/callback/:id", async (ctx: Context) => {
       ? parseInt(query.get("hub.lease_seconds") as string)
       : undefined;
 
+    console.log("Callback request:", { mode, topic, challenge, leaseSeconds });
     // If this is a verification request
     if (mode && topic) {
       const result = await WebhookService.handleCallback(
