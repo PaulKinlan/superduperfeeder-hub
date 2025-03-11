@@ -64,6 +64,10 @@ router.all("/callback/:id", async (ctx: Context) => {
     const id = ctx.request.url.pathname.split("/").pop();
     const callbackPath = `/callback/${id}`;
 
+    console.log("Callback request:", { id, callbackPath });
+    console.log("Request headers:", ctx.request.headers);
+    console.log("searchParams", ctx.request.url.searchParams);
+
     // Get query parameters for verification
     const query = ctx.request.url.searchParams;
     const mode = query.get("hub.mode");
