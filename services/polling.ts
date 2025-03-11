@@ -424,7 +424,9 @@ export class PollingService {
       let updated = 0;
 
       for (const feed of feeds) {
+        console.log(`Polling feed: ${feed.url}`);
         const result = await PollingService.pollFeed(feed);
+        console.log(result);
         polled++;
 
         if (result.success && result.newItems > 0) {
