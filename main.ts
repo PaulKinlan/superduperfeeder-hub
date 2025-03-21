@@ -58,7 +58,7 @@ console.log(`Server running on http://localhost:${port}`);
 // Start the services
 console.log("Starting services...");
 
-Deno.cron("Poll RSS Feeds", "*/10 * * * *", async () => {
+Deno.cron("Poll RSS Feeds", "*/1 * * * *", async () => {
   console.log("Running scheduled feed polling...");
   console.log(await PollingService.pollFeeds());
 });
