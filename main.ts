@@ -100,7 +100,7 @@ kv.listenQueue(async (message: unknown) => {
     console.log("Processing feed", message);
     try {
       const result = await PollingService.pollFeed(message);
-      console.log("Polling result:", result);
+      console.log("Polling result:", message.url, result);
     } catch (error) {
       // If an individual feed polling operation fails, log the error but continue with other feeds
       const errorMessage =
