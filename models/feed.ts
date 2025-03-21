@@ -129,15 +129,38 @@ export class FeedStore {
       }
 
       // If never fetched, include it
-      if (!feed.lastFetched) {
+      if (!feed.lastFetched && !feed.lastErrorTime) {
         return true;
       }
 
-      // Check if it's time to poll again
-      const nextPollTime = new Date(feed.lastFetched);
-      nextPollTime.setMinutes(nextPollTime.getMinutes() + feed.pollingInterval);
+      // If the feed has errored, use lastErrorTime to determine next poll time
+      if (feed.lastErrorTime) {
+        const nextPollAfterError = new Date(feed.lastErrorTime);
+        nextPollAfterError.setMinutes(
+          nextPollAfterError.getMinutes() + feed.pollingInterval
+        );
 
-      return now >= nextPollTime;
+        // Only poll if the error cooldown period has passed
+        if (now < nextPollAfterError) {
+          return false;
+        }
+      }
+
+      // If we have a lastFetched time, check if it's time to poll again
+      if (feed.lastFetched) {
+        const nextPollTime = new Date(feed.lastFetched);
+        nextPollTime.setMinutes(
+          nextPollTime.getMinutes() + feed.pollingInterval
+        );
+
+        return now >= nextPollTime;
+      }
+
+      // If we reach here, either:
+      // 1. The feed has never been fetched but had an error and the error cooldown has passed
+      // 2. Some other edge case
+      // In either case, it's safe to include it for polling
+      return true;
     });
   }
 
