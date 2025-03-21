@@ -150,7 +150,7 @@ export class FeedStore {
       if (feed.lastFetched) {
         const nextPollTime = new Date(feed.lastFetched);
         nextPollTime.setMinutes(
-          nextPollTime.getMinutes() + feed.pollingInterval
+          nextPollTime.getMinutes() //+ feed.pollingInterval
         );
 
         return now >= nextPollTime;
