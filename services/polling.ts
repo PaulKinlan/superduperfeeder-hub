@@ -422,21 +422,41 @@ export class PollingService {
       // Poll each feed
       let polled = 0;
       let updated = 0;
+      let errors = 0;
 
       for (const feed of feeds) {
-        console.log(`Polling feed: ${feed.url}`);
-        const result = await PollingService.pollFeed(feed);
-        console.log(result);
-        polled++;
+        try {
+          console.log(`Polling feed: ${feed.url}`);
+          const result = await PollingService.pollFeed(feed);
+          console.log(result);
+          polled++;
 
-        if (result.success && result.newItems > 0) {
-          updated++;
+          if (result.success && result.newItems > 0) {
+            updated++;
+          }
+        } catch (error) {
+          // If an individual feed polling operation fails, log the error but continue with other feeds
+          errors++;
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.error(`Error polling feed ${feed.url}: ${errorMessage}`);
+
+          // Update the feed with the error
+          try {
+            const db = await getDatabase();
+            feed.errorCount++;
+            feed.lastError = `Unhandled error: ${errorMessage}`;
+            feed.lastErrorTime = new Date();
+            await db.feeds.update(feed);
+          } catch (updateError) {
+            console.error("Error updating feed with error:", updateError);
+          }
         }
       }
 
       return {
         success: true,
-        message: `Polled ${polled} feeds, ${updated} had updates`,
+        message: `Polled ${polled} feeds, ${updated} had updates, ${errors} failed but were skipped`,
         polled,
         updated,
       };
