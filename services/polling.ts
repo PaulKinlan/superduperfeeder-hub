@@ -356,7 +356,7 @@ export class PollingService {
       if (newItems > 0) {
         // Instead of getting items from the database, use the parsed feed content directly
         // This ensures subscribers get the complete, original feed content
-
+        console.log("Processing content notification for", feed.url);
         // Notify subscribers with the original feed content
         await HubService.processContentNotification(
           feed.url,
