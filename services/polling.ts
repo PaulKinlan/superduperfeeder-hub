@@ -401,76 +401,34 @@ export class PollingService {
     success: boolean;
     message: string;
     polled: number;
-    updated: number;
   }> {
-    try {
-      const db = await getDatabase();
-      const now = new Date();
+    const db = await getDatabase();
+    const now = new Date();
 
-      // Get feeds that need polling
-      const feeds = await db.feeds.getFeedsToUpdate(now);
+    // Get feeds that need polling
+    const feeds = await db.feeds.getFeedsToUpdate(now);
 
-      if (feeds.length === 0) {
-        return {
-          success: true,
-          message: "No feeds need polling",
-          polled: 0,
-          updated: 0,
-        };
-      }
-
-      // Poll each feed
-      let polled = 0;
-      let updated = 0;
-      let errors = 0;
-
-      for (const feed of feeds) {
-        try {
-          console.log(`Polling feed: ${feed.url}`);
-          const result = await PollingService.pollFeed(feed);
-          console.log(result);
-          polled++;
-
-          if (result.success && result.newItems > 0) {
-            updated++;
-          }
-        } catch (error) {
-          // If an individual feed polling operation fails, log the error but continue with other feeds
-          errors++;
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          console.error(`Error polling feed ${feed.url}: ${errorMessage}`);
-
-          // Update the feed with the error
-          try {
-            const db = await getDatabase();
-            feed.errorCount++;
-            feed.lastError = `Unhandled error: ${errorMessage}`;
-            feed.lastErrorTime = new Date();
-            await db.feeds.update(feed);
-          } catch (updateError) {
-            console.error("Error updating feed with error:", updateError);
-          }
-        }
-      }
-
+    if (feeds.length === 0) {
       return {
         success: true,
-        message: `Polled ${polled} feeds, ${updated} had updates, ${errors} failed but were skipped`,
-        polled,
-        updated,
-      };
-    } catch (error: unknown) {
-      console.error("Error polling feeds:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      return {
-        success: false,
-        message: `Error polling feeds: ${errorMessage}`,
+        message: "No feeds need polling",
         polled: 0,
-        updated: 0,
       };
     }
+
+    // Poll each feed
+    let queued = 0;
+
+    for (const feed of feeds) {
+      console.log(`Queuing feed poll: ${feed.url}`);
+      await db.queue.enqueue(feed);
+      queued++;
+    }
+
+    return {
+      success: true,
+      message: `Queued ${queued} feeds`,
+      polled: queued,
+    };
   }
 }

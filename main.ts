@@ -2,6 +2,8 @@ import { Application, oakCors } from "./deps.ts";
 import type { Context, Next } from "@oak/oak";
 import { config } from "./config.ts";
 
+import { getDatabase } from "./utils/database.ts";
+
 // Import routes
 import router from "./routes/index.ts";
 
@@ -9,6 +11,7 @@ import router from "./routes/index.ts";
 import { PollingService } from "./services/polling.ts";
 import { WebhookService } from "./services/webhook.ts";
 import { STATUS_CODE } from "@std/http";
+import { Feed } from "./models/feed.ts";
 
 // Initialize the application
 const app = new Application();
@@ -77,6 +80,46 @@ Deno.cron("Clean Up Expired Verifications", "0 * * * *", async () => {
 //   console.log("Running scheduled cleanup of expired subscriptions...");
 //   console.log(await WebhookService.clearExpiredSubscriptions());
 // });
+
+// Set up a queue to process async tasks,
+const kv = await Deno.openKv();
+
+const isFeed = (data: unknown): data is Feed => {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "id" in data &&
+    "url" in data &&
+    "active" in data &&
+    "supportsWebSub" in data
+  );
+};
+
+kv.listenQueue(async (message: unknown) => {
+  if (isFeed(message)) {
+    console.log("Processing feed", message);
+    try {
+      const result = await PollingService.pollFeed(message);
+      console.log("Polling result:", result);
+    } catch (error) {
+      // If an individual feed polling operation fails, log the error but continue with other feeds
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error polling feed ${message.url}: ${errorMessage}`);
+
+      // Update the feed with the error
+      try {
+        const db = await getDatabase();
+        message.errorCount++;
+        message.lastError = `Unhandled error: ${errorMessage}`;
+        message.lastErrorTime = new Date();
+        await db.feeds.update(message);
+      } catch (updateError) {
+        console.error("Error updating feed with error:", updateError);
+      }
+    }
+  }
+});
 
 // Start the server
 await app.listen({ port });
