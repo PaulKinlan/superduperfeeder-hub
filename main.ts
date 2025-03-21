@@ -61,7 +61,7 @@ Deno.cron("Poll RSS Feeds", "*/10 * * * *", async () => {
 });
 
 // Set up a cron job to renew subscriptions every hour
-Deno.cron("Renew WebSub Subscriptions", "0 * * * *", async () => {
+Deno.cron("Renew WebSub Subscriptions", "0/10 * * * *", async () => {
   console.log("Running scheduled subscription renewal...");
   console.log(await WebhookService.renewSubscriptions());
 });
@@ -73,10 +73,10 @@ Deno.cron("Clean Up Expired Verifications", "0 * * * *", async () => {
 });
 
 // Set up a cron job to clear expired subscriptions every hour
-Deno.cron("Clear Expired Subscriptions", "0 * * * *", async () => {
-  console.log("Running scheduled cleanup of expired subscriptions...");
-  console.log(await WebhookService.clearExpiredSubscriptions());
-});
+// Deno.cron("Clear Expired Subscriptions", "0 * * * *", async () => {
+//   console.log("Running scheduled cleanup of expired subscriptions...");
+//   console.log(await WebhookService.clearExpiredSubscriptions());
+// });
 
 // Start the server
 await app.listen({ port });
