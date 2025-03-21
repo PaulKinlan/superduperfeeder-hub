@@ -56,6 +56,8 @@ export class PollingService {
 
       // Update the last fetched time
       const now = new Date();
+      // ensure the feeds are not fetched at the same time, right now they are batched into the same 10 minute block.
+      now.setMinutes(now.getMinutes() - Math.floor(Math.random() * 5));
       feed.lastFetched = now;
 
       // Check if the feed has been modified
