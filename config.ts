@@ -19,7 +19,7 @@ export const config = {
   maxLeaseSeconds: 2592000, // 30 days
 
   // RSS polling configuration
-  defaultPollingIntervalMinutes: 1, // 1 hour
+  defaultPollingIntervalMinutes: 60, // 1 hour
   minPollingIntervalMinutes: 15, // 15 minutes
 
   // Admin configuration
