@@ -75,7 +75,7 @@ Deno.cron("Renew WebSub Subscriptions", "0/10 * * * *", async () => {
 });
 
 // Set up a cron job to clean up expired verification tokens every hour
-Deno.cron("Clean Up Expired Verifications", "0 * * * *", async () => {
+Deno.cron("Clean Up Expired Verifications", "0/10 * * * *", async () => {
   console.log("Running scheduled cleanup of expired verifications...");
   console.log(await WebhookService.cleanupExpiredVerifications());
 });

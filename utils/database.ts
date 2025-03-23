@@ -3,7 +3,6 @@
 import { config } from "../config.ts";
 import { SubscriptionStore } from "../models/subscription.ts";
 import { FeedStore } from "../models/feed.ts";
-import { WebhookStore } from "../models/webhook.ts";
 import { UserStore } from "../models/user.ts";
 import { ExternalSubscriptionStore } from "../models/external_subscription.ts";
 import { UserCallbackStore } from "../models/user_callback.ts";
@@ -17,7 +16,6 @@ export class Database {
   // Stores
   public subscriptions: SubscriptionStore;
   public feeds: FeedStore;
-  public webhooks: WebhookStore;
   public users: UserStore;
   public externalSubscriptions: ExternalSubscriptionStore;
   public userCallbacks: UserCallbackStore;
@@ -29,7 +27,6 @@ export class Database {
     // Initialize stores
     this.subscriptions = new SubscriptionStore(kv);
     this.feeds = new FeedStore(kv);
-    this.webhooks = new WebhookStore(kv);
     this.users = new UserStore(kv);
     this.externalSubscriptions = new ExternalSubscriptionStore(kv);
     this.userCallbacks = new UserCallbackStore(kv);

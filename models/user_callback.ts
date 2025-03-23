@@ -2,7 +2,7 @@
 
 import { crypto } from "../deps.ts";
 
-// Interface for user callback data
+// Interface for user callback data, this is the webhook model
 export interface UserCallback {
   id: string;
   topic: string; // The feed URL

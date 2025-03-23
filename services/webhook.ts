@@ -790,9 +790,10 @@ export class WebhookService {
       // Filter callbacks with expired verification tokens
       const expiredCallbacks = callbacks.filter(
         (callback) =>
-          !callback.verified &&
-          callback.verificationExpires &&
-          callback.verificationExpires < now
+          (!callback.verified &&
+            callback.verificationExpires &&
+            callback.verificationExpires < now) ||
+          callback.verified == undefined // There was a time when we didn't have token verification
       );
 
       console.log(

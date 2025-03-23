@@ -27,12 +27,6 @@ export async function resetTestDatabase(): Promise<void> {
       await db.feeds.delete(feed.id);
     }
 
-    // Delete all webhooks
-    const webhooks = await db.webhooks.getAll();
-    for (const webhook of webhooks) {
-      await db.webhooks.delete(webhook.id);
-    }
-
     // Delete the admin user if it exists
     const adminUser = await db.users.getByUsername(testConfig.admin.username);
     if (adminUser) {
