@@ -189,6 +189,7 @@ export class HubService {
   static async queueVerification(verification: any): Promise<void> {
     // In a real implementation, we'd use Deno Deploy's queue system
     // For now, we'll just call the verification method directly
+    console.log("Queueing verification request:", verification);
     setTimeout(() => {
       HubService.verifySubscription(verification).catch(console.error);
     }, 0);
@@ -355,6 +356,10 @@ export class HubService {
         return false;
       }
 
+      console.log(
+        `Verifying subscription: ${verification.id}, mode: ${verification.mode}`
+      );
+
       // Build the verification URL
       const url = new URL(verification.callback);
       url.searchParams.set("hub.mode", verification.mode);
@@ -368,6 +373,7 @@ export class HubService {
         );
       }
 
+      console.log(`Sending Verification URL: ${url.toString()}`);
       // Send the verification request
       const response = await fetch(url.toString(), {
         method: "GET",
@@ -442,6 +448,8 @@ export class HubService {
         return false;
       }
 
+      console.log(`Subscription verified: ${verification.id}`);
+
       // Update the subscription
       if (verification.mode === "subscribe") {
         await db.subscriptions.update({
@@ -454,28 +462,18 @@ export class HubService {
         await db.subscriptions.delete(verification.id);
       }
 
+      const feedCheck = await HubService.checkAndAddFeedForPolling(
+        verification.topic
+      );
+
+      if (feedCheck.success) {
+        console.log(`Added topic to polling: ${feedCheck.feedUrl}`);
+        return true;
+      }
+
       return true;
     } catch (error: unknown) {
       console.error("Error verifying subscription:", error);
-
-      // If there's an error during subscribe verification, try to add as a polling feed
-      try {
-        if (verification.mode === "subscribe") {
-          console.log(
-            `Error during verification, checking if topic is a feed: ${verification.topic}`
-          );
-          const feedCheck = await HubService.checkAndAddFeedForPolling(
-            verification.topic
-          );
-
-          if (feedCheck.success) {
-            console.log(`Added topic to polling: ${feedCheck.feedUrl}`);
-            return true;
-          }
-        }
-      } catch (feedError) {
-        console.error("Error checking feed:", feedError);
-      }
 
       return false;
     }
