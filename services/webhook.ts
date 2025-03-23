@@ -349,82 +349,79 @@ export class WebhookService {
     pendingVerification?: boolean;
   }> {
     try {
-      const db = await getDatabase();
+      // Determine the hub URL to use (production or localhost)
+      const hubUrl = config.hubUrl;
 
-      // Generate a callback path
+      // Generate a callback path and callback URL for the subscription
       const callbackId = crypto.randomUUID();
       const callbackPath = `/callback/${callbackId}`;
       const callbackUrl = `${config.baseUrl}${callbackPath}`;
 
-      // Generate a secret
+      // Generate a secret for the subscription
       const secret = crypto.randomUUID();
 
       // Determine lease seconds
       const leaseSeconds = config.defaultLeaseSeconds;
 
-      // Create expiration date
-      const expires = new Date();
-      expires.setSeconds(expires.getSeconds() + leaseSeconds);
+      // Prepare the subscription request as FormData
+      const formData = new FormData();
+      formData.append("hub.callback", callbackUrl);
+      formData.append("hub.mode", "subscribe");
+      formData.append("hub.topic", topic);
+      formData.append("hub.lease_seconds", leaseSeconds.toString());
+      formData.append("hub.secret", secret);
 
-      // Create the subscription in our database
-      const subscription = await db.externalSubscriptions.create({
-        topic,
-        hub: config.hubUrl,
-        callbackPath,
-        secret,
-        leaseSeconds,
-        expires,
-        verified: false,
-        usingFallback: true,
-        userCallbackUrl,
+      // Add user callback to the request if provided
+      if (userCallbackUrl) {
+        formData.append("user_callback_url", userCallbackUrl);
+      }
+
+      // Send the subscription request to the hub
+      const response = await fetch(hubUrl, {
+        method: "POST",
+        headers: {
+          "User-Agent": `SuperDuperFeeder/${config.version}`,
+        },
+        body: formData,
       });
 
-      // Check if the feed exists in our database
-      let feed = await db.feeds.getByUrl(topic);
-
-      if (!feed) {
-        // Add the feed to our database for polling
-        const feedCheck = await HubService.checkAndAddFeedForPolling(topic);
-
-        if (!feedCheck.success) {
-          // Update the subscription with the error
-          subscription.errorCount++;
-          subscription.lastError = "Failed to add feed for polling";
-          subscription.lastErrorTime = new Date();
-          await db.externalSubscriptions.update(subscription);
-
-          return {
-            success: false,
-            message: "Failed to add feed for polling",
-            usingExternalHub: false,
-          };
-        }
-      }
-
-      // Mark the subscription as verified since we're using our own hub
-      subscription.verified = true;
-      await db.externalSubscriptions.update(subscription);
-
-      // Determine if there's a pending verification for the user callback
-      let pendingVerification = false;
-      if (userCallbackUrl) {
-        const callback = await db.userCallbacks.getByTopicAndUrl(
-          topic,
-          userCallbackUrl
+      // Check the response
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `Failed to subscribe to ${topic} via our hub: ${response.status} ${response.statusText}`,
+          errorText
         );
-        if (callback && !callback.verified) {
-          pendingVerification = true;
-        }
+
+        return {
+          success: false,
+          message: `Failed to subscribe using our hub: ${response.status} ${response.statusText}`,
+          usingExternalHub: false,
+        };
       }
 
+      // Try to parse the response as JSON
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch {
+        // If not JSON, just use a generic success message
+        return {
+          success: true,
+          message: "Subscribed using our own hub",
+          usingExternalHub: false,
+          subscriptionId: callbackId,
+          pendingVerification: false,
+        };
+      }
+
+      // Return the hub's response data with additional fields
       return {
         success: true,
-        message: pendingVerification
-          ? "Subscribed using our own hub (callback verification pending)"
-          : "Subscribed using our own hub",
+        message: responseData.message || "Subscribed using our own hub",
         usingExternalHub: false,
-        subscriptionId: subscription.id,
-        pendingVerification,
+        subscriptionId: responseData.id || callbackId,
+        pendingVerification: responseData.pendingVerification || false,
       };
     } catch (error) {
       console.error(`Error subscribing to own hub: ${error}`);
@@ -651,15 +648,49 @@ export class WebhookService {
       for (const subscription of subscriptions) {
         try {
           if (subscription.usingFallback) {
-            // For fallback subscriptions, just update the expiration
-            const expires = new Date();
-            expires.setSeconds(
-              expires.getSeconds() + subscription.leaseSeconds
+            // For fallback subscriptions, make a new subscription request to our hub
+            const callbackUrl = `${config.baseUrl}${subscription.callbackPath}`;
+
+            // Prepare the subscription request as FormData
+            const formData = new FormData();
+            formData.append("hub.callback", callbackUrl);
+            formData.append("hub.mode", "subscribe");
+            formData.append("hub.topic", subscription.topic);
+            formData.append(
+              "hub.lease_seconds",
+              subscription.leaseSeconds.toString()
             );
-            subscription.expires = expires;
-            subscription.lastRenewed = new Date();
-            await db.externalSubscriptions.update(subscription);
-            renewed++;
+            formData.append("hub.secret", subscription.secret);
+
+            // Add user callback to the request if provided
+            if (subscription.userCallbackUrl) {
+              formData.append(
+                "user_callback_url",
+                subscription.userCallbackUrl
+              );
+            }
+
+            // Send the subscription request to the hub
+            const response = await fetch(config.hubUrl, {
+              method: "POST",
+              headers: {
+                "User-Agent": `SuperDuperFeeder/${config.version}`,
+              },
+              body: formData,
+            });
+
+            if (response.ok) {
+              // Update the last renewed time
+              subscription.lastRenewed = new Date();
+              await db.externalSubscriptions.update(subscription);
+              renewed++;
+            } else {
+              // Update the subscription with the error
+              subscription.errorCount++;
+              subscription.lastError = `Failed to renew: ${response.status} ${response.statusText}`;
+              subscription.lastErrorTime = new Date();
+              await db.externalSubscriptions.update(subscription);
+            }
           } else {
             // For external hub subscriptions, send a new subscription request
             const callbackUrl = `${config.baseUrl}${subscription.callbackPath}`;

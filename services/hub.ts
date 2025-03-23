@@ -386,22 +386,22 @@ export class HubService {
         if (verification.mode === "unsubscribe") {
           await db.subscriptions.delete(verification.id);
         } else if (verification.mode === "subscribe") {
-          // // For subscribe failures, check if it's a feed and add it for polling
-          // console.log(`Checking if topic is a feed: ${verification.topic}`);
-          // const feedCheck = await HubService.checkAndAddFeedForPolling(
-          //   verification.topic
-          // );
-          // if (feedCheck.success) {
-          //   console.log(`Added topic to polling: ${feedCheck.feedUrl}`);
-          //   // Update the subscription to mark it as verified since we'll handle it via polling
-          //   await db.subscriptions.update({
-          //     ...subscription,
-          //     verified: true,
-          //     verificationToken: undefined,
-          //     verificationExpires: undefined,
-          //   });
-          //   return true;
-          // }
+          // For subscribe failures, check if it's a feed and add it for polling
+          console.log(`Checking if topic is a feed: ${verification.topic}`);
+          const feedCheck = await HubService.checkAndAddFeedForPolling(
+            verification.topic
+          );
+          if (feedCheck.success) {
+            console.log(`Added topic to polling: ${feedCheck.feedUrl}`);
+            // Update the subscription to mark it as verified since we'll handle it via polling
+            await db.subscriptions.update({
+              ...subscription,
+              verified: true,
+              verificationToken: undefined,
+              verificationExpires: undefined,
+            });
+            return true;
+          }
         }
 
         return false;
