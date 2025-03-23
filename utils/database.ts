@@ -5,7 +5,6 @@ import { SubscriptionStore } from "../models/subscription.ts";
 import { FeedStore } from "../models/feed.ts";
 import { UserStore } from "../models/user.ts";
 import { ExternalSubscriptionStore } from "../models/external_subscription.ts";
-import { UserCallbackStore } from "../models/user_callback.ts";
 import { Queue } from "../models/queue.ts";
 
 // Class for managing the database connection and stores
@@ -18,7 +17,6 @@ export class Database {
   public feeds: FeedStore;
   public users: UserStore;
   public externalSubscriptions: ExternalSubscriptionStore;
-  public userCallbacks: UserCallbackStore;
   public queue: Queue;
 
   private constructor(kv: Deno.Kv) {
@@ -29,7 +27,6 @@ export class Database {
     this.feeds = new FeedStore(kv);
     this.users = new UserStore(kv);
     this.externalSubscriptions = new ExternalSubscriptionStore(kv);
-    this.userCallbacks = new UserCallbackStore(kv);
     this.queue = new Queue(kv);
   }
 

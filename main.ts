@@ -10,7 +10,6 @@ import adminRouter from "./routes/admin.ts";
 
 // Import services
 import { PollingService } from "./services/polling.ts";
-import { WebhookService } from "./services/webhook.ts";
 import { STATUS_CODE } from "@std/http";
 import { Feed } from "./models/feed.ts";
 import { ContentDistributionMessage } from "./models/queue.ts";
@@ -66,18 +65,6 @@ console.log("Starting services...");
 Deno.cron("Poll RSS Feeds", "*/1 * * * *", async () => {
   console.log("Running scheduled feed polling...");
   console.log(await PollingService.pollFeeds());
-});
-
-// Set up a cron job to renew subscriptions every hour
-Deno.cron("Renew WebSub Subscriptions", "0/10 * * * *", async () => {
-  console.log("Running scheduled subscription renewal...");
-  console.log(await WebhookService.renewSubscriptions());
-});
-
-// Set up a cron job to clean up expired verification tokens every hour
-Deno.cron("Clean Up Expired Verifications", "0/10 * * * *", async () => {
-  console.log("Running scheduled cleanup of expired verifications...");
-  console.log(await WebhookService.cleanupExpiredVerifications());
 });
 
 // Set up a cron job to clear expired subscriptions every hour

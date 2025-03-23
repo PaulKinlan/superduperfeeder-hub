@@ -5,7 +5,6 @@ import { config } from "../config.ts";
 // Import route handlers
 import hubRouter from "./hub.ts";
 import staticRouter from "./static.ts";
-import webhookRouter from "./webhook.ts";
 
 // Create the main router
 const router = new Router();
@@ -38,9 +37,5 @@ router.use(hubRouter.allowedMethods());
 // Mount the static router
 router.use(staticRouter.routes());
 router.use(staticRouter.allowedMethods());
-
-// Mount the webhook router
-router.use(webhookRouter.routes());
-router.use(webhookRouter.allowedMethods());
 
 export default router;
