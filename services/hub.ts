@@ -549,6 +549,7 @@ export class HubService {
       const subscriptions = await db.subscriptions.getByTopic(topic);
 
       if (subscriptions.length === 0) {
+        console.log(`No subscriptions found for topic: ${topic}`);
         return {
           success: true,
           message: "No subscriptions found for topic",
