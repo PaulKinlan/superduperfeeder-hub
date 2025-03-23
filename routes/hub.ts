@@ -130,7 +130,7 @@ router.post("/", async (ctx: Context) => {
       (await getHubDataFromRequest(ctx)) ||
       Object.fromEntries(new URL(ctx.request.url).searchParams);
 
-    console.log("params", params);
+    console.log("/", "params", params);
     const mode = params["hub.mode"];
     const topic = params["hub.topic"];
 
