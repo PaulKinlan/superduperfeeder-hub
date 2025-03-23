@@ -1,4 +1,4 @@
-import { Subscription } from "./subscription";
+import { Subscription } from "./subscription.ts";
 export type ContentDistributionMessage = {
   type: "contentDistribution";
   subscription: Subscription;
