@@ -564,11 +564,14 @@ export class HubService {
       let count = 0;
       for (const subscription of subscriptions) {
         if (subscription.verified) {
-          await HubService.queueDistribution(
+          db.queue.enqueue({
+            type: "contentDistribution",
             subscription,
+            feedUrl: topic,
             content,
-            contentType
-          );
+            contentType,
+          });
+
           count++;
         }
       }
@@ -588,27 +591,6 @@ export class HubService {
         count: 0,
       };
     }
-  }
-
-  // Queue content distribution
-  static async queueDistribution(
-    subscription: Subscription,
-    content: string,
-    contentType: string
-  ): Promise<void> {
-    // In a real implementation, we'd use Deno Deploy's queue system
-    // For now, we'll just call the distribution method directly
-    console.log(
-      `Queueing content distribution to: ${subscription.id} ${subscription.topic}`
-    );
-    setTimeout(() => {
-      console.log(
-        `Distributing content to: ${subscription.id} ${subscription.topic}`
-      );
-      HubService.distributeContent(subscription, content, contentType).catch(
-        console.error
-      );
-    }, 0);
   }
 
   // Distribute content to a subscriber

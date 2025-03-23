@@ -1,3 +1,12 @@
+import { Subscription } from "./subscription";
+export type ContentDistributionMessage = {
+  type: "contentDistribution";
+  subscription: Subscription;
+  feedUrl: string;
+  content: string;
+  contentType: string;
+};
+
 export class Queue {
   private kv: Deno.Kv;
 

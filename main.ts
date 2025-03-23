@@ -13,6 +13,8 @@ import { PollingService } from "./services/polling.ts";
 import { WebhookService } from "./services/webhook.ts";
 import { STATUS_CODE } from "@std/http";
 import { Feed } from "./models/feed.ts";
+import { ContentDistributionMessage } from "./models/queue.ts";
+import { HubService } from "./services/hub.ts";
 
 // Initialize the application
 const app = new Application();
@@ -98,9 +100,24 @@ const isFeed = (data: unknown): data is Feed => {
   );
 };
 
+const isContentDistributionMessage = (
+  data: unknown
+): data is ContentDistributionMessage => {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "type" in data &&
+    data.type === "contentDistribution" &&
+    "subscription" in data &&
+    "feedUrl" in data &&
+    "content" in data &&
+    "contentType" in data
+  );
+};
+
 kv.listenQueue(async (message: unknown) => {
   if (isFeed(message)) {
-    console.log("Processing feed", message);
+    console.log("Processing feed from Queue", message);
     try {
       const result = await PollingService.pollFeed(message);
       console.log("Polling result:", message.url, result);
@@ -121,6 +138,14 @@ kv.listenQueue(async (message: unknown) => {
         console.error("Error updating feed with error:", updateError);
       }
     }
+  } else if (isContentDistributionMessage(message)) {
+    console.log("Processing content distribution message from Queue", message);
+
+    await HubService.distributeContent(
+      message.subscription,
+      message.content,
+      message.contentType
+    );
   }
 });
 
