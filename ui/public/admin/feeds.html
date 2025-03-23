@@ -39,6 +39,26 @@
             </select>
           </div>
           <div class="filter-group">
+            <label for="url-filter">URL Contains</label>
+            <input type="text" id="url-filter" placeholder="Filter by URL...">
+          </div>
+          <div class="filter-group">
+            <label for="title-filter">Title Contains</label>
+            <input type="text" id="title-filter" placeholder="Filter by title...">
+          </div>
+          <div class="filter-group">
+            <label for="description-filter">Description Contains</label>
+            <input type="text" id="description-filter" placeholder="Filter by description...">
+          </div>
+          <div class="filter-group">
+            <label for="websub-filter">WebSub Support</label>
+            <select id="websub-filter">
+              <option value="">All</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div class="filter-group">
             <label for="sort-filter">Sort By</label>
             <select id="sort-filter">
               <option value="lastFetched">Last Fetched</option>
@@ -173,6 +193,10 @@
 
       // Filter elements
       const statusFilter = document.getElementById('status-filter');
+      const urlFilter = document.getElementById('url-filter');
+      const titleFilter = document.getElementById('title-filter');
+      const descriptionFilter = document.getElementById('description-filter');
+      const webSubFilter = document.getElementById('websub-filter');
       const sortFilter = document.getElementById('sort-filter');
       const orderFilter = document.getElementById('order-filter');
       const applyFiltersBtn = document.getElementById('apply-filters');
@@ -214,12 +238,28 @@
       // Functions
       function loadFeeds() {
         const status = statusFilter.value;
+        const url_filter = urlFilter.value;
+        const title = titleFilter.value;
+        const description = descriptionFilter.value;
+        const websub = webSubFilter.value;
         const sort = sortFilter.value;
         const order = orderFilter.value;
 
         let url = `/api/admin/feeds?sort=${sort}&order=${order}`;
         if (status) {
           url += `&status=${status}`;
+        }
+        if (url_filter) {
+          url += `&url=${encodeURIComponent(url_filter)}`;
+        }
+        if (title) {
+          url += `&title=${encodeURIComponent(title)}`;
+        }
+        if (description) {
+          url += `&description=${encodeURIComponent(description)}`;
+        }
+        if (websub) {
+          url += `&websub=${websub}`;
         }
 
         const tableBody = document.getElementById('feeds-table-body');
@@ -295,6 +335,10 @@
 
       function resetFilters() {
         statusFilter.value = '';
+        urlFilter.value = '';
+        titleFilter.value = '';
+        descriptionFilter.value = '';
+        webSubFilter.value = '';
         sortFilter.value = 'lastFetched';
         orderFilter.value = 'desc';
         loadFeeds();

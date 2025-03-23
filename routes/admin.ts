@@ -68,6 +68,10 @@ router.get("/api/admin/feeds", requireAdmin, async (ctx: Context) => {
   const status = url.searchParams.get("status"); // active, inactive, error
   const sort = url.searchParams.get("sort") || "lastFetched"; // url, title, lastFetched, lastUpdated
   const order = url.searchParams.get("order") || "desc"; // asc, desc
+  const urlFilter = url.searchParams.get("url"); // filter by URL
+  const titleFilter = url.searchParams.get("title"); // filter by title
+  const descriptionFilter = url.searchParams.get("description"); // filter by description
+  const webSubFilter = url.searchParams.get("websub"); // filter by WebSub support
 
   // Get all feeds
   let feeds = await db.feeds.getAll();
@@ -79,6 +83,39 @@ router.get("/api/admin/feeds", requireAdmin, async (ctx: Context) => {
     feeds = feeds.filter((feed) => !feed.active);
   } else if (status === "error") {
     feeds = feeds.filter((feed) => feed.errorCount > 0);
+  }
+
+  // Apply URL filter
+  if (urlFilter) {
+    const urlFilterLower = urlFilter.toLowerCase();
+    feeds = feeds.filter((feed) =>
+      feed.url.toLowerCase().includes(urlFilterLower)
+    );
+  }
+
+  // Apply title filter
+  if (titleFilter) {
+    const titleFilterLower = titleFilter.toLowerCase();
+    feeds = feeds.filter((feed) =>
+      feed.title ? feed.title.toLowerCase().includes(titleFilterLower) : false
+    );
+  }
+
+  // Apply description filter
+  if (descriptionFilter) {
+    const descriptionFilterLower = descriptionFilter.toLowerCase();
+    feeds = feeds.filter((feed) =>
+      feed.description
+        ? feed.description.toLowerCase().includes(descriptionFilterLower)
+        : false
+    );
+  }
+
+  // Apply WebSub filter
+  if (webSubFilter === "yes") {
+    feeds = feeds.filter((feed) => feed.supportsWebSub);
+  } else if (webSubFilter === "no") {
+    feeds = feeds.filter((feed) => !feed.supportsWebSub);
   }
 
   // Apply sorting
