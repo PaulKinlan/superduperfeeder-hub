@@ -120,6 +120,10 @@ export class HubService {
         let subscription: Subscription;
 
         if (existingSubscription) {
+          console.log(
+            "Updating existing subscription:",
+            existingSubscription.id
+          );
           // Update the existing subscription
           subscription = {
             ...existingSubscription,
@@ -133,6 +137,7 @@ export class HubService {
           await db.subscriptions.update(subscription);
         } else {
           // Create a new subscription
+          console.log("Creating new subscription");
           subscription = await db.subscriptions.create({
             topic: request.topic,
             callback: request.callback,
