@@ -80,6 +80,7 @@ router.all("/callback/:id", async (ctx: Context) => {
     console.log("Callback request:", { mode, topic, challenge, leaseSeconds });
     // If this is a verification request
     if (mode && topic) {
+      // If mode is set then this is a verification request (subscribe or unsubscribe)
       const result = await WebhookService.handleCallback(
         callbackPath,
         mode,
@@ -100,7 +101,7 @@ router.all("/callback/:id", async (ctx: Context) => {
       return;
     }
 
-    // If this is a content notification (POST)
+    // If this is a content notification (POST) from the local hub or external hub.
     if (ctx.request.method === "POST") {
       // Get the topic from the request
       const topic = ctx.request.headers
@@ -113,10 +114,11 @@ router.all("/callback/:id", async (ctx: Context) => {
         return;
       }
 
-      // Get the content type and body
-      const contentType =
-        ctx.request.headers.get("Content-Type") || "application/octet-stream";
-      const body = await ctx.request.body.text();
+      // Prepare the data for WebhookService.handleCallback, we are just sending the topic for now.
+      const contentType = "application/json";
+      const body = JSON.stringify({
+        topic,
+      });
 
       // Process the content
       const result = await WebhookService.handleCallback(

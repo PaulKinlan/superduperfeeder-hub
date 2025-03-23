@@ -337,7 +337,7 @@ export class WebhookService {
     }
   }
 
-  // Subscribe to our own hub (fallback)
+  // Subscribe to our own hub (fallback). This is used when no external hub is available, our Hub will handle polling and then call this "hub" to notify the user
   static async subscribeToOwnHub(
     topic: string,
     userCallbackUrl?: string
@@ -551,6 +551,7 @@ export class WebhookService {
 
           for (const callback of verifiedCallbacks) {
             try {
+              // Received content from the hub, forward to the user callback
               const response = await fetch(callback.callbackUrl, {
                 method: "POST",
                 headers: {
