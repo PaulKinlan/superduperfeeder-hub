@@ -172,7 +172,10 @@ router.get("/api/admin/feeds", requireAdmin, async (ctx: Context) => {
 // Get a specific feed by ID
 router.get("/api/admin/feeds/:id", requireAdmin, async (ctx: Context) => {
   const db = await getDatabase();
-  const id = ctx.request.url.pathname.split("/").pop();
+
+  // Extract the feed ID from the URL path
+  const pathParts = ctx.request.url.pathname.split("/");
+  const id = pathParts[pathParts.length - 1]; // Get the last part (the ID)
 
   if (!id) {
     ctx.response.status = 400;
@@ -180,11 +183,12 @@ router.get("/api/admin/feeds/:id", requireAdmin, async (ctx: Context) => {
     return;
   }
 
+  console.log(`Getting feed with ID: ${id}`);
   const feed = await db.feeds.getById(id);
 
   if (!feed) {
     ctx.response.status = 404;
-    ctx.response.body = { error: "Feed not found" };
+    ctx.response.body = { error: `Feed not found with ID: ${id}` };
     return;
   }
 
@@ -210,8 +214,11 @@ router.get("/api/admin/feeds/:id", requireAdmin, async (ctx: Context) => {
 // Get items for a specific feed
 router.get("/api/admin/feeds/:id/items", requireAdmin, async (ctx: Context) => {
   const db = await getDatabase();
-  const id = ctx.request.url.pathname.split("/").pop();
   const url = ctx.request.url;
+
+  // Extract the feed ID from the URL path
+  const pathParts = ctx.request.url.pathname.split("/");
+  const id = pathParts[pathParts.length - 2]; // Get the second-to-last part (the ID)
 
   if (!id) {
     ctx.response.status = 400;
@@ -219,11 +226,12 @@ router.get("/api/admin/feeds/:id/items", requireAdmin, async (ctx: Context) => {
     return;
   }
 
+  console.log(`Getting items for feed ID: ${id}`);
   const feed = await db.feeds.getById(id);
 
   if (!feed) {
     ctx.response.status = 404;
-    ctx.response.body = { error: "Feed not found" };
+    ctx.response.body = { error: `Feed not found with ID: ${id}` };
     return;
   }
 
@@ -270,7 +278,10 @@ router.post(
   requireAdmin,
   async (ctx: Context) => {
     const db = await getDatabase();
-    const id = ctx.request.url.pathname.split("/").pop();
+
+    // Extract the feed ID from the URL path
+    const pathParts = ctx.request.url.pathname.split("/");
+    const id = pathParts[pathParts.length - 2]; // Get the second-to-last part (the ID)
 
     if (!id) {
       ctx.response.status = 400;
@@ -278,11 +289,12 @@ router.post(
       return;
     }
 
+    console.log(`Updating feed with ID: ${id}`);
     const feed = await db.feeds.getById(id);
 
     if (!feed) {
       ctx.response.status = 404;
-      ctx.response.body = { error: "Feed not found" };
+      ctx.response.body = { error: `Feed not found with ID: ${id}` };
       return;
     }
 
@@ -299,7 +311,10 @@ router.post(
   requireAdmin,
   async (ctx: Context) => {
     const db = await getDatabase();
-    const id = ctx.request.url.pathname.split("/").pop();
+
+    // Extract the feed ID from the URL path
+    const pathParts = ctx.request.url.pathname.split("/");
+    const id = pathParts[pathParts.length - 2]; // Get the second-to-last part (the ID)
 
     if (!id) {
       ctx.response.status = 400;
@@ -307,11 +322,12 @@ router.post(
       return;
     }
 
+    console.log(`Toggling feed with ID: ${id}`);
     const feed = await db.feeds.getById(id);
 
     if (!feed) {
       ctx.response.status = 404;
-      ctx.response.body = { error: "Feed not found" };
+      ctx.response.body = { error: `Feed not found with ID: ${id}` };
       return;
     }
 
