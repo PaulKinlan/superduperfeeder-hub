@@ -565,7 +565,7 @@ export class HubService {
       let count = 0;
       for (const subscription of subscriptions) {
         if (subscription.verified) {
-          db.queue.enqueue({
+          await db.queue.enqueue({
             type: "contentDistribution",
             subscription,
             feedUrl: topic,
