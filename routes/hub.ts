@@ -30,6 +30,8 @@ router.post("/api/subscribe", async (ctx: Context) => {
     const body = await ctx.request.body.formData();
     const params = await getHubDataFromRequest(ctx);
 
+    console.log("/api/subscribe", params);
+
     if (!params) {
       ctx.response.status = 400;
       ctx.response.body = {
@@ -79,6 +81,8 @@ router.post("/api/unsubscribe", async (ctx: Context) => {
     const body = await ctx.request.body.formData();
     const params = await getHubDataFromRequest(ctx);
 
+    console.log("/api/unsubscribe", params);
+
     if (!params) {
       ctx.response.status = 400;
       ctx.response.body = {
@@ -121,7 +125,7 @@ router.post("/", async (ctx: Context) => {
   try {
     // Get the request body
     const body = await ctx.request.body.formData();
-    console.log("body", body);
+    console.log("/", body);
     const params =
       (await getHubDataFromRequest(ctx)) ||
       Object.fromEntries(new URL(ctx.request.url).searchParams);
@@ -129,6 +133,8 @@ router.post("/", async (ctx: Context) => {
     console.log("params", params);
     const mode = params["hub.mode"];
     const topic = params["hub.topic"];
+
+    console.log("/", mode, topic);
 
     // Check if this is a publish request
     if (mode === "publish" && topic) {
