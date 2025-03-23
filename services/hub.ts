@@ -556,6 +556,10 @@ export class HubService {
         };
       }
 
+      console.log(
+        `Distributing content to ${subscriptions.length} subscribers`
+      );
+
       // Queue content distribution for each subscription
       let count = 0;
       for (const subscription of subscriptions) {
@@ -594,7 +598,9 @@ export class HubService {
   ): Promise<void> {
     // In a real implementation, we'd use Deno Deploy's queue system
     // For now, we'll just call the distribution method directly
+    console.log(`Queueing content distribution to: ${subscription.id}`);
     setTimeout(() => {
+      console.log(`Distributing content to: ${subscription.id}`);
       HubService.distributeContent(subscription, content, contentType).catch(
         console.error
       );

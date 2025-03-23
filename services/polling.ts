@@ -329,12 +329,14 @@ export class PollingService {
             // For existing items, we need to create a new item
             // Since there's no direct update method for feed items
             // We'll use createItem which will overwrite the existing item
+            console.log("Updating existing item:", feedItem);
             await db.feeds.createItem({
               ...feedItem,
               id: existingItem.id,
             } as any); // Use type assertion to bypass TypeScript check
           } else {
             // Create a new item
+            console.log("Creating new item:", feedItem);
             await db.feeds.createItem(feedItem);
             newItems++;
           }
