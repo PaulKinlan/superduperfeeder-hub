@@ -33,4 +33,18 @@ router.get("/docs/:path*", async (ctx: Context) => {
   });
 });
 
+// Serve admin panel files
+router.get("/admin", async (ctx: Context) => {
+  await ctx.send({
+    root: join(Deno.cwd(), "ui/public"),
+    path: "admin/index.html",
+  });
+});
+
+router.get("/admin/:path*", async (ctx: Context) => {
+  await ctx.send({
+    root: join(Deno.cwd(), "ui/public"),
+  });
+});
+
 export default router;

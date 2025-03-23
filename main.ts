@@ -6,6 +6,7 @@ import { getDatabase } from "./utils/database.ts";
 
 // Import routes
 import router from "./routes/index.ts";
+import adminRouter from "./routes/admin.ts";
 
 // Import services
 import { PollingService } from "./services/polling.ts";
@@ -47,9 +48,11 @@ app.use(async (ctx: Context, next: Next) => {
   console.log(`${ctx.request.method} ${ctx.request.url.pathname} - ${ms}ms`);
 });
 
-// Apply router
+// Apply routers
 app.use(router.routes());
 app.use(router.allowedMethods());
+app.use(adminRouter.routes());
+app.use(adminRouter.allowedMethods());
 
 // Start the server
 const port = config.port || 8000;
