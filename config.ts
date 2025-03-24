@@ -7,8 +7,8 @@ export const config = {
   description: "A WebSub/PubSubHubbub service for RSS feeds",
 
   // URLs
-  baseUrl: "https://superduperfeeder.deno.dev",
-  hubUrl: "https://superduperfeeder.deno.dev",
+  baseUrl: "https://superduperfeeder-hub.deno.dev",
+  hubUrl: "https://superduperfeeder-hub.deno.dev",
 
   // Server configuration
   port: parseInt(Deno.env.get("PORT") || "8000"),
