@@ -280,7 +280,7 @@ export class HubService {
           url: feedUrl,
           title: feedTitle,
           description: feedDescription,
-          pollingInterval: 1, //config.defaultPollingIntervalMinutes || 60, // Default to 60 minutes if not configured
+          pollingInterval: config.defaultPollingIntervalMinutes || 60, // Default to 60 minutes if not configured
           active: true,
           supportsWebSub: false, // We're here because WebSub verification failed
           lastProcessedEntryId,
